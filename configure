@@ -115,7 +115,7 @@ fi
 
 # Unset variables that we do not need and which cause bugs (e.g. in
 # pre-3.0 UWIN ksh).  But do not cause bugs in bash 2.01; the "|| exit 1"
-# suppresses any "Segmentation fault" message there.  '((' could
+# suppresses any "Segmentation fault" message there																																																																																																.  '((' could
 # trigger a bug in pdksh 5.2.14.
 for as_var in BASH_ENV ENV MAIL MAILPATH
 do eval test x\${$as_var+set} = xset \
