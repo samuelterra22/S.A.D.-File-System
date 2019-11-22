@@ -171,7 +171,7 @@ static int sad_read(const char *path, char *buffer, size_t size, off_t offset,
 
 	memcpy(buffer, content + offset, size);
 
-	return strlen(content) - offset;
+	return (int) (strlen(content) - offset);
 }
 
 /******************************************************************************
