@@ -15,10 +15,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <zconf.h>
-
-//static const char *filepath = "/file.txt";
-//static const char *filename = "file.txt";
-//static const char *filecontent = "I'm the content of the only file available there\n";
+#include <stdlib.h>
 
 char dir_list[256][256];
 int curr_dir_idx = -1;
@@ -495,7 +492,7 @@ int main(int argc, char *argv[]) {
 
 	if ((getuid() == 0) || (geteuid() == 0)) {
 		fprintf(stderr, "Running SADFS as root opens unacceptable security holes\n");
-		return 1;
+		return EXIT_FAILURE;
 	}
 
 	fprintf(stderr, "Using Fuse library version %d.%d\n", FUSE_MAJOR_VERSION, FUSE_MINOR_VERSION);
