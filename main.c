@@ -450,6 +450,28 @@ int sad_fgetattr(const char *path, struct stat *statbuf, struct fuse_file_info *
 	return 0;
 }
 
+/******************************************************************************
+ * The file system operations:
+ *
+ * Most of these should work very similarly to the well known UNIX
+ * file system operations.  A major exception is that instead of
+ * returning an error in 'errno', the operation should return the
+ * negated error value (-errno) directly.
+ *
+ * All methods are optional, but some are essential for a useful
+ * filesystem (e.g. getattr).  Open, flush, release, fsync, opendir,
+ * releasedir, fsyncdir, access, create, truncate, lock, init and
+ * destroy are special purpose methods, without which a full featured
+ * filesystem can still be implemented.
+ *
+ * In general, all methods are expected to perform any necessary
+ * permission checking. However, a filesystem may delegate this task
+ * to the kernel by passing the `default_permissions` mount option to
+ * `fuse_new()`. In this case, methods will only be called if
+ * the kernel's permission check has succeeded.
+ *
+ * Almost all operations take a path which can be of any length.
+ *****************************************************************************/
 static struct fuse_operations sad_operations = {
 		.getattr = sad_getattr,
 		.open = sad_open,
