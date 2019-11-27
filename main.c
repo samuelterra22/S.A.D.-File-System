@@ -14,8 +14,9 @@
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
-#include <zconf.h>
+#include <unistd.h>
 #include <stdlib.h>
+#include "minifat/minifat.h"
 
 char dir_list[256][256];
 int curr_dir_idx = -1;
@@ -25,6 +26,77 @@ int curr_file_idx = -1;
 
 char files_content[256][256];
 int curr_file_content_idx = -1;
+
+
+
+info_entry_t info_sd;
+fat_entry_t* fat;
+dir_entry_t* root_entry;
+
+
+
+void print_entry(dir_entry_t* entry) {
+    if (entry->mode == EMPTY_TYPE) {
+        fprintf(stderr, "Empty node\n");
+    } else {
+        fprintf(stderr, "Name: %s\n", entry->name);
+        fprintf(stderr, "Mode: %o\n",  entry->mode);
+        fprintf(stderr, "UID: %d\n", entry->uid);
+        fprintf(stderr, "GID: %d\n", entry->gid);
+        fprintf(stderr, "Size: %d\n", entry->size);
+        fprintf(stderr, "Creation time: %d/%d/%d - %d:%d:%d\n", entry->create.day, entry->create.month,
+               entry->create.year, entry->create.hour, entry->create.minutes, entry->create.seconds);
+        fprintf(stderr, "Update time: %d/%d/%d - %d:%d:%d\n", entry->update.day, entry->update.month,
+               entry->update.year, entry->update.hour, entry->update.minutes, entry->update.seconds);
+        fprintf(stderr, "First Block: %d\n", entry->first_block);
+    }
+}
+
+void print_dir_entry(dir_entry_t* dir) {
+    for(int i = 0; i < DIRENTRYCOUNT; i++) {
+        fprintf(stderr, "Node %d\n", i);
+        print_entry(&dir[i]);
+        fprintf(stderr, "----------\n");
+    }
+}
+
+
+
+int num_of_bars(char *string) {
+    int empty_spaces = 0;
+
+    /* search empty spaces */
+    for (int i = 0; i < strlen(string); ++i)
+        if (string[i] == '/')
+            empty_spaces++;
+
+    return empty_spaces;
+}
+
+char** explode_path(char *string) {
+    const char s[2] = "/";
+    char *token;
+    int i = 0;
+    char str[MAXPATHLENGTH];
+    strncpy(str, string, MAXPATHLENGTH);
+
+    int bars = num_of_bars(str);
+
+    /* alloc memory for array arguments */
+    char **ret = malloc(sizeof(char *) * bars);
+
+    /* get the first token */
+    token = strtok(str, "/");
+
+    while (token != NULL) {
+        ret[i] = token;
+        token = strtok(NULL, s);
+        i++;
+    }
+
+    return ret;
+}
+
 
 void add_dir(const char *dir_name) {
 	curr_dir_idx++;
@@ -90,15 +162,48 @@ void write_to_file(const char *path, const char *new_content) {
  * NULL if the file is open.
  ******************************************************************************/
 static int sad_getattr(const char *path, struct stat *st) {
+    if (strcmp(path, "/") == 0) {
+        st->st_uid = getuid(); // The owner of the file/directory is the user who mounted the filesystem
+        st->st_gid = getgid(); // The group of the file/directory is the same as the group of the user who mounted the filesystem
+        st->st_atime = time(NULL); // The last "a"ccess of the file/directory is right now
+        st->st_mtime = time(NULL); // The last "m"odification of the file/directory is right now
+        st->st_mode = S_IFDIR | 0755;
+        st->st_nlink = 2; // Why "two" hardlinks instead of "one"? The answer is here: http://unix.stackexchange.com/a/101536
+
+        return 0;
+    }
+
+    int number_of_bars = num_of_bars(path);
+    char** bars = explode_path(path);
+
+    fprintf(stderr, "\n\n");
+    for(int i = 0; i < number_of_bars; i++)
+        fprintf(stderr, "%s\n", bars[i]);
+
+    dir_entry_t** actual_dir = &root_entry;
+    dir_descriptor_t descriptor;
+
+    for(int i = 0; i < number_of_bars-1; i++) {
+        search_dir_entry(*actual_dir, &info_sd, bars[i], &descriptor);
+        actual_dir = (dir_entry_t **) &descriptor.entry;
+    }
+
+    fprintf(stderr, "\n\nActual dir name: %s\n", descriptor.dir_infos.name);
+
+    dir_descriptor_t dir_descriptor;
+    dir_entry_t file;
+    int dir_exist = search_dir_entry(*actual_dir, &info_sd, bars[number_of_bars-1], &dir_descriptor);
+    int file_exist = search_file_in_dir(*actual_dir, bars[number_of_bars-1], &file);
+
 	st->st_uid = getuid(); // The owner of the file/directory is the user who mounted the filesystem
 	st->st_gid = getgid(); // The group of the file/directory is the same as the group of the user who mounted the filesystem
 	st->st_atime = time(NULL); // The last "a"ccess of the file/directory is right now
 	st->st_mtime = time(NULL); // The last "m"odification of the file/directory is right now
 
-	if (strcmp(path, "/") == 0 || is_dir(path) == 1) {
+	if (dir_exist == 1) {
 		st->st_mode = S_IFDIR | 0755;
 		st->st_nlink = 2; // Why "two" hardlinks instead of "one"? The answer is here: http://unix.stackexchange.com/a/101536
-	} else if (is_file(path) == 1) {
+	} else if (file_exist == 1) {
 		st->st_mode = S_IFREG | 0644;
 		st->st_nlink = 1;
 		st->st_size = 1024;
@@ -126,18 +231,37 @@ static int sad_getattr(const char *path, struct stat *st) {
  ******************************************************************************/
 static int sad_readdir(const char *path, void *buffer, fuse_fill_dir_t filler,
 					   off_t offset, struct fuse_file_info *fi) {
+    fprintf(stderr, "\n\nREADDIR\n");
 	filler(buffer, ".", NULL, 0); // Current Directory
 	filler(buffer, "..", NULL, 0); // Parent Directory
 
-	if (strcmp(path, "/") ==
-		0) // If the user is trying to show the files/directories of the root directory show the following
-	{
-		for (int curr_idx = 0; curr_idx <= curr_dir_idx; curr_idx++)
-			filler(buffer, dir_list[curr_idx], NULL, 0);
+    int number_of_bars = num_of_bars(path);
+    char** bars = explode_path(path);
 
-		for (int curr_idx = 0; curr_idx <= curr_file_idx; curr_idx++)
-			filler(buffer, files_list[curr_idx], NULL, 0);
-	}
+    fprintf(stderr, "\n");
+    for(int i = 0; i < number_of_bars; i++)
+        fprintf(stderr, "%s\n", bars[i]);
+
+    dir_entry_t** actual_dir_entry = &root_entry;
+    dir_entry_t* actual_dir = NULL;
+    dir_descriptor_t descriptor;
+
+    for(int i = 0; i < number_of_bars-1; i++) {
+        search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
+        actual_dir_entry = (dir_entry_t **) &descriptor.entry;
+        actual_dir = &descriptor.dir_infos;
+    }
+
+    if (actual_dir == NULL)
+        fprintf(stderr, "\n\nActual dir name: root\n");
+    else
+        fprintf(stderr, "\n\nActual dir name: %s\n", descriptor.dir_infos.name);
+
+    for(int i = 0; i < DIRENTRYCOUNT; i++) {
+        if ((*actual_dir_entry)[i].mode != EMPTY_TYPE) {
+            filler(buffer, (*actual_dir_entry)[i].name, NULL, 0);
+        }
+    }
 
 	return 0;
 }
@@ -208,8 +332,30 @@ int sad_mknod(const char *path, mode_t mode, dev_t dev) {
  * use mode|S_IFDIR
  ******************************************************************************/
 int sad_mkdir(const char *path, mode_t mode) {
-	path++;
-	add_dir(path);
+    fprintf(stderr, "\n\nMKDIR\n");
+    int number_of_bars = num_of_bars(path);
+    char** bars = explode_path(path);
+
+    fprintf(stderr, "\n");
+    for(int i = 0; i < number_of_bars; i++)
+        fprintf(stderr, "%s\n", bars[i]);
+
+    dir_entry_t** actual_dir_entry = &root_entry;
+    dir_entry_t* actual_dir = NULL;
+    dir_descriptor_t descriptor;
+
+    for(int i = 0; i < number_of_bars-1; i++) {
+        search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
+        actual_dir_entry = (dir_entry_t **) &descriptor.entry;
+        actual_dir = &descriptor.dir_infos;
+    }
+
+    if (actual_dir == NULL)
+        fprintf(stderr, "\n\nActual dir name: root\n");
+    else
+        fprintf(stderr, "\n\nActual dir name: %s\n", descriptor.dir_infos.name);
+
+    create_empty_dir(actual_dir, *actual_dir_entry, &info_sd, fat, bars[number_of_bars-1], mode|S_IFDIR, 1001, 1001);
 
 	return 0;
 }
@@ -477,7 +623,6 @@ static struct fuse_operations sad_operations = {
 		.open = sad_open,
 		.read = sad_read,
 		.readdir = sad_readdir,
-
 		.readlink = sad_readlink,
 		.getdir = NULL, // .getdir is deprecated
 		.mknod = sad_mknod,
@@ -516,6 +661,18 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "Running SADFS as root opens unacceptable security holes\n");
 		return EXIT_FAILURE;
 	}
+
+    fd = open(virtual_disk, O_RDWR);
+
+    if (strcmp(argv[1], "-format") == 0) {
+        printf("Formatting disk ..........");
+        format(3862528);
+        printf("   disk successfully formatted\n");
+
+        return 0;
+    }
+
+    init(&info_sd, &fat, &root_entry);
 
 	fprintf(stderr, "Using Fuse library version %d.%d\n", FUSE_MAJOR_VERSION, FUSE_MINOR_VERSION);
 	fuse_status = fuse_main(argc, argv, &sad_operations, NULL);
