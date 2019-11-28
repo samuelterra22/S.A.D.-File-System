@@ -518,3 +518,19 @@ int delete_dir(fat_entry_t * fat, const info_entry_t* info, dir_entry_t* father_
 
     return 1;
 }
+
+int add_entry_in_dir_entry(dir_entry_t* dir, dir_entry_t* dir_entry_list, dir_entry_t* entry, const info_entry_t* info) {
+    int index_in_dir_entry = get_first_empty_dir_entry(dir_entry_list, info->dir_entry_number);
+    if (index_in_dir_entry == -1) return -1;
+
+    memcpy(&dir_entry_list[index_in_dir_entry], &entry, sizeof(dir_entry_t));
+
+    uint32_t sector_to_write;
+    if (dir == NULL)
+        sector_to_write = info->sector_per_fat+1;
+    else
+        sector_to_write = info->sector_per_fat+1+dir->first_block;
+    write_sector(sector_to_write, dir_entry_list);
+
+    return 0;
+}
