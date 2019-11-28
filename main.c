@@ -99,6 +99,12 @@ char** explode_path(char *string) {
     return ret;
 }
 
+void delete_path(char** path, int size) {
+    for(int i = 0; i < size; i++)
+        free(path[i]);
+    free(path);
+}
+
 
 void add_dir(const char *dir_name) {
 	curr_dir_idx++;
@@ -165,12 +171,12 @@ void write_to_file(const char *path, const char *new_content) {
  *****************************************************************************/
 static int sad_getattr(const char *path, struct stat *st) {
     if (strcmp(path, "/") == 0) {
-        st->st_uid = getuid(); // The owner of the file/directory is the user who mounted the filesystem
-        st->st_gid = getgid(); // The group of the file/directory is the same as the group of the user who mounted the filesystem
-        st->st_atime = time(NULL); // The last "a"ccess of the file/directory is right now
-        st->st_mtime = time(NULL); // The last "m"odification of the file/directory is right now
+        st->st_uid = getuid();
+        st->st_gid = getgid();
+        st->st_atime = time(NULL);
+        st->st_mtime = time(NULL);
         st->st_mode = S_IFDIR | 0755;
-        st->st_nlink = 2; // Why "two" hardlinks instead of "one"? The answer is here: http://unix.stackexchange.com/a/101536
+        st->st_nlink = 2;
 
         return 0;
     }
@@ -178,11 +184,6 @@ static int sad_getattr(const char *path, struct stat *st) {
     int number_of_bars = num_of_bars(path);
     char** bars = explode_path(path);
 
-/*    fprintf(stderr, "\n\n");
-    for(int i = 0; i < number_of_bars; i++)
-        fprintf(stderr, "%s\n", bars[i]);*/
-
-//    dir_entry_t** actual_dir = &root_entry;
     dir_entry_t *actual_dir = malloc(SECTOR_SIZE);
     memcpy(actual_dir, root_entry, SECTOR_SIZE);
     dir_descriptor_t descriptor;
@@ -190,11 +191,8 @@ static int sad_getattr(const char *path, struct stat *st) {
     for(int i = 0; i < number_of_bars-1; i++) {
         fprintf(stderr, "bars[%d] - %s\n", i, bars[i]);
         search_dir_entry(actual_dir, &info_sd, bars[i], &descriptor);
-//        actual_dir = (dir_entry_t *) descriptor.entry;
         memcpy(actual_dir, descriptor.entry, SECTOR_SIZE);
     }
-
-    //fprintf(stderr, "\n\nActual dir name: %s\n", descriptor.dir_infos.name);
 
     dir_descriptor_t dir_descriptor;
     dir_entry_t file;
@@ -225,6 +223,7 @@ static int sad_getattr(const char *path, struct stat *st) {
 	}
 
 	free(actual_dir);
+	delete_path(bars, number_of_bars);
 	return 0;
 }
 
@@ -245,7 +244,6 @@ static int sad_getattr(const char *path, struct stat *st) {
  *****************************************************************************/
 static int sad_readdir(const char *path, void *buffer, fuse_fill_dir_t filler,
 					   off_t offset, struct fuse_file_info *fi) {
-    // fprintf(stderr, "\n\nREADDIR - %s\n", path);
 	filler(buffer, ".", NULL, 0); // Current Directory
 	filler(buffer, "..", NULL, 0); // Parent Directory
 
@@ -261,26 +259,16 @@ static int sad_readdir(const char *path, void *buffer, fuse_fill_dir_t filler,
     int number_of_bars = num_of_bars(path);
     char** bars = explode_path(path);
 
-    /*fprintf(stderr, "\n");
-    for(int i = 0; i < number_of_bars; i++)
-        fprintf(stderr, "%s\n", bars[i]);*/
-
-    dir_entry_t* actual_dir_entry = malloc(SECTOR_SIZE); //&root_entry;
+    dir_entry_t* actual_dir_entry = malloc(SECTOR_SIZE);
     memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
     dir_entry_t* actual_dir = NULL;
     dir_descriptor_t descriptor;
 
     for(int i = 0; i < number_of_bars; i++) {
         search_dir_entry(actual_dir_entry, &info_sd, bars[i], &descriptor);
-//        *actual_dir_entry = (dir_entry_t *) descriptor.entry;
         memcpy(actual_dir_entry, descriptor.entry, SECTOR_SIZE);
         actual_dir = &descriptor.dir_infos;
     }
-
-    if (actual_dir == NULL)
-        fprintf(stderr, "\n\nActual dir name: root\n");
-    else
-        fprintf(stderr, "\n\nActual dir name: %s\n", descriptor.dir_infos.name);
 
     for(unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
         if (actual_dir_entry[i].mode != EMPTY_TYPE) {
@@ -289,6 +277,7 @@ static int sad_readdir(const char *path, void *buffer, fuse_fill_dir_t filler,
     }
 
     free(actual_dir_entry);
+    delete_path(bars, number_of_bars);
 	return 0;
 }
 
@@ -332,6 +321,7 @@ static int sad_read(const char *path, char *buffer, size_t size, off_t offset,
     int total = read_file(fat, &info_sd, &file, offset, buffer, size);
 
     free(actual_dir_entry);
+    delete_path(bars, number_of_bars);
     return total;
 }
 
@@ -355,15 +345,9 @@ int sad_readlink(const char *path, char *link, size_t size) {
  * called instead.
  *****************************************************************************/
 int sad_mknod(const char *path, mode_t mode, dev_t dev) {
-//	fprintf(stderr, "\n\nMKNOD\n");
     int number_of_bars = num_of_bars(path);
     char** bars = explode_path(path);
 
-    /*fprintf(stderr, "\n");
-    for(int i = 0; i < number_of_bars; i++)
-        fprintf(stderr, "%s\n", bars[i]);*/
-
-//    dir_entry_t** actual_dir_entry = &root_entry;
     dir_entry_t* actual_dir_entry = malloc(SECTOR_SIZE);
     memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
     dir_entry_t* actual_dir = NULL;
@@ -371,34 +355,23 @@ int sad_mknod(const char *path, mode_t mode, dev_t dev) {
 
     for(int i = 0; i < number_of_bars-1; i++) {
         search_dir_entry(actual_dir_entry, &info_sd, bars[i], &descriptor);
-//        *actual_dir_entry = (dir_entry_t *) descriptor.entry;
         memcpy(actual_dir_entry, descriptor.entry, SECTOR_SIZE);
         actual_dir = &descriptor.dir_infos;
     }
-
-    /*if (actual_dir == NULL)
-        fprintf(stderr, "\n\nActual dir name: root\n");
-    else
-        fprintf(stderr, "\n\nActual dir name: %s\n", descriptor.dir_infos.name);*/
 
     char name[MAXNAME];
     memset(name, 0, MAXNAME);
     strcpy(name, bars[number_of_bars-1]);
 
     struct fuse_context* context = fuse_get_context();
-    // fprintf(stderr, "\nFile name: %s\n", name);
     create_empty_file(actual_dir, actual_dir_entry, &info_sd, fat, name, mode, context->uid, context->gid);
-    /*if (actual_dir == NULL)
-        create_empty_dir(NULL, root_entry, &info_sd, fat, bars[number_of_bars-1], mode|S_IFDIR, 1001, 1001);
-    else
-        create_empty_dir(&descriptor.dir_infos, (dir_entry_t*) descriptor.entry, &info_sd, fat, bars[number_of_bars-1], mode|S_IFDIR, 1001, 1001);*/
 
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
-    free(actual_dir_entry);
-    return 0;
 
-	return 0;
+    free(actual_dir_entry);
+    delete_path(bars, number_of_bars);
+    return 0;
 }
 
 /******************************************************************************
@@ -409,13 +382,8 @@ int sad_mknod(const char *path, mode_t mode, dev_t dev) {
  * use mode|S_IFDIR
  *****************************************************************************/
 int sad_mkdir(const char *path, mode_t mode) {
-//    fprintf(stderr, "\n\nMKDIR\n");
     int number_of_bars = num_of_bars(path);
     char** bars = explode_path(path);
-
-    /*fprintf(stderr, "\n");
-    for(int i = 0; i < number_of_bars; i++)
-        fprintf(stderr, "%s\n", bars[i]);*/
 
     dir_entry_t* actual_dir_entry = malloc(SECTOR_SIZE);
     memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
@@ -428,25 +396,17 @@ int sad_mkdir(const char *path, mode_t mode) {
         actual_dir = &descriptor.dir_infos;
     }
 
-    /*if (actual_dir == NULL)
-        fprintf(stderr, "\n\nActual dir name: root\n");
-    else
-        fprintf(stderr, "\n\nActual dir name: %s\n", descriptor.dir_infos.name);*/
-
     char name[MAXNAME];
     memset(name, 0, MAXNAME);
     strcpy(name, bars[number_of_bars-1]);
-    struct fuse_context* context = fuse_get_context();
-    // fprintf(stderr, "\nFile name: %s\n", name);
-    create_empty_dir(actual_dir, actual_dir_entry, &info_sd, fat, name, mode|S_IFDIR, context->uid, context->gid);
 
-    /*if (actual_dir == NULL)
-        create_empty_dir(NULL, root_entry, &info_sd, fat, bars[number_of_bars-1], mode|S_IFDIR, 1001, 1001);
-    else
-        create_empty_dir(&descriptor.dir_infos, (dir_entry_t*) descriptor.entry, &info_sd, fat, bars[number_of_bars-1], mode|S_IFDIR, 1001, 1001);*/
+    struct fuse_context* context = fuse_get_context();
+    create_empty_dir(actual_dir, actual_dir_entry, &info_sd, fat, name, mode|S_IFDIR, context->uid, context->gid);
 
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+
+    delete_path(bars, number_of_bars);
     free(actual_dir_entry);
 	return 0;
 }
@@ -546,7 +506,6 @@ int sad_utime(const char *path, struct utimbuf *ubuf) {
  *****************************************************************************/
 int sad_write(const char *path, const char *buffer, size_t size, off_t offset,
 			  struct fuse_file_info *fi) {
-    fprintf(stderr, "\nWrite - %s\n", path);
     int number_of_bars = num_of_bars(path);
     char** bars = explode_path(path);
 
@@ -561,19 +520,15 @@ int sad_write(const char *path, const char *buffer, size_t size, off_t offset,
         actual_dir = &descriptor.dir_infos;
     }
 
-    if (actual_dir == NULL)
-        fprintf(stderr, "\n\nActual dir name: root\n");
-    else
-        fprintf(stderr, "\n\nActual dir name: %s\n", descriptor.dir_infos.name);
-
     dir_entry_t file;
     int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars-1], &file);
 
-    fprintf(stderr, "passou aqui\n");
     int total = write_file(fat, &info_sd, actual_dir, actual_dir_entry, &file, offset, buffer, size);
 
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+
+    delete_path(bars, number_of_bars);
     free(actual_dir_entry);
 	return total;
 }
