@@ -415,7 +415,32 @@ int sad_mkdir(const char *path, mode_t mode) {
  * Remove a file
  *****************************************************************************/
 int sad_unlink(const char *path) {
-	return 0;
+    int number_of_bars = num_of_bars(path);
+    char** bars = explode_path(path);
+
+    dir_entry_t* actual_dir_entry = malloc(SECTOR_SIZE);
+    memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
+    dir_entry_t* actual_dir = NULL;
+    dir_descriptor_t descriptor;
+
+    for(int i = 0; i < number_of_bars-1; i++) {
+        search_dir_entry(actual_dir_entry, &info_sd, bars[i], &descriptor);
+        memcpy(actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+        actual_dir = &descriptor.dir_infos;
+    }
+
+    dir_entry_t file;
+    int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars-1], &file);
+
+    delete_file(fat, &info_sd, actual_dir, actual_dir_entry, &file);
+
+    if (actual_dir == NULL)
+        memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+
+    delete_path(bars, number_of_bars);
+    free(actual_dir_entry);
+
+    return 0;
 }
 
 /******************************************************************************
