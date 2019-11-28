@@ -177,7 +177,7 @@ int create_empty_file(dir_entry_t* dir, dir_entry_t* dir_entry_list, info_entry_
     tm_to_date(time_info, &new_file.update);
     new_file.first_block = index_in_fat_entry+1;
 
-    dir_entry_list[index_in_dir_entry] = new_file;
+    memcpy(&dir_entry_list[index_in_dir_entry], &new_file, sizeof(dir_entry_t));// = new_file;
     fat[index_in_fat_entry] = ENDOFCHAIN;
 
     // jump fat sectors, info sector and enter this block
@@ -214,7 +214,7 @@ int create_empty_dir(dir_entry_t* dir, dir_entry_t* dir_entry_list, info_entry_t
     tm_to_date(time_info, &new_file.update);
     new_file.first_block = index_in_fat_entry + 1;
 
-    dir_entry_list[index_in_dir_entry] = new_file;
+    memcpy(&dir_entry_list[index_in_dir_entry], &new_file, sizeof(dir_entry_t));// = new_file;
     fat[index_in_fat_entry] = ENDOFCHAIN;
 
     // jump fat sectors, info sector and enter this block
@@ -233,11 +233,16 @@ int create_empty_dir(dir_entry_t* dir, dir_entry_t* dir_entry_list, info_entry_t
 }
 
 int search_dir_entry(dir_entry_t* dir_entry, info_entry_t* info, const char* name, dir_descriptor_t* descriptor) {
+    char buffer[SECTOR_SIZE];
+
     for(unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
         if (dir_entry[i].mode != EMPTY_TYPE) {
             if (strcmp(dir_entry[i].name, name) == 0 && S_ISDIR(dir_entry[i].mode)) {
                 memcpy(&descriptor->dir_infos, &dir_entry[i], sizeof(dir_entry_t));
-                read_sector((uint32_t) info->sector_per_fat+1+dir_entry[i].first_block, descriptor->entry);
+
+                memset(buffer, 0, SECTOR_SIZE);
+                read_sector((uint32_t) info->sector_per_fat+1+dir_entry[i].first_block, buffer);
+                memcpy(descriptor->entry, buffer, SECTOR_SIZE);
 
                 return 1;
             }
