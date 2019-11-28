@@ -158,6 +158,23 @@ void write_to_file(const char *path, const char *new_content) {
 	strcpy(files_content[file_idx], new_content);
 }
 
+time_t date_to_time(date_t* date) {
+    time_t raw_time;
+    struct tm* time_info;
+
+    time(&raw_time);
+    time_info = localtime(&raw_time);
+
+    time_info->tm_sec = (int) date->seconds;
+    time_info->tm_min = (int) date->minutes;
+    time_info->tm_hour = (int) date->hour;
+    time_info->tm_mday = (int) date->day;
+    time_info->tm_mon = (int) date->month;
+    time_info->tm_year = (int) date->year - 1900;
+
+    return mktime(time_info);
+}
+
 /******************************************************************************
  * Get file attributes.
  *
@@ -206,15 +223,17 @@ static int sad_getattr(const char *path, struct stat *st) {
 	if (dir_exist == 1) {
 	    st->st_uid = dir_descriptor.dir_infos.uid;
         st->st_gid = dir_descriptor.dir_infos.gid;
+        st->st_ctime = date_to_time(&dir_descriptor.dir_infos.create);
         st->st_atime = time(NULL);
-        st->st_mtime = time(NULL);
+        st->st_mtime = date_to_time(&dir_descriptor.dir_infos.update);
 		st->st_mode = dir_descriptor.dir_infos.mode;
 		st->st_nlink = 2;
 	} else if (file_exist == 1) {
         st->st_uid = file.uid;
         st->st_gid = file.gid;
+        st->st_ctime = date_to_time(&file.create);
         st->st_atime = time(NULL);
-        st->st_mtime = time(NULL);
+        st->st_mtime = date_to_time(&file.update);
         st->st_mode = file.mode;
         st->st_nlink = 1;
 		st->st_size = file.size;
