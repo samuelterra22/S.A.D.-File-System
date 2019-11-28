@@ -8,6 +8,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
+set(CMAKE_C_STANDARD_LIBRARIES  "-lm")
 
 set(CMAKE_C_STANDARD 99)
 
@@ -15,6 +16,6 @@ find_package(FUSE REQUIRED)
 
 include_directories(${FUSE_INCLUDE_DIR})
 
-add_executable(SAD main.c)
+add_executable(SAD main.c minifat/minifat.c minifat/minifat.h)
 
 target_link_libraries(SAD ${FUSE_LIBRARIES})

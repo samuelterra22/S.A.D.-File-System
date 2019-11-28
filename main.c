@@ -14,8 +14,9 @@
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
-#include <zconf.h>
+#include <unistd.h>
 #include <stdlib.h>
+#include "minifat/minifat.h"
 
 char dir_list[256][256];
 int curr_dir_idx = -1;
@@ -25,6 +26,85 @@ int curr_file_idx = -1;
 
 char files_content[256][256];
 int curr_file_content_idx = -1;
+
+
+
+info_entry_t info_sd;
+fat_entry_t* fat;
+dir_entry_t* root_entry;
+
+
+
+void print_entry(dir_entry_t* entry) {
+    if (entry->mode == EMPTY_TYPE) {
+        fprintf(stderr, "Empty node\n");
+    } else {
+        fprintf(stderr, "Name: %s\n", entry->name);
+        fprintf(stderr, "Mode: %o\n",  entry->mode);
+        fprintf(stderr, "UID: %d\n", entry->uid);
+        fprintf(stderr, "GID: %d\n", entry->gid);
+        fprintf(stderr, "Size: %d\n", entry->size);
+        fprintf(stderr, "Creation time: %d/%d/%d - %d:%d:%d\n", entry->create.day, entry->create.month,
+               entry->create.year, entry->create.hour, entry->create.minutes, entry->create.seconds);
+        fprintf(stderr, "Update time: %d/%d/%d - %d:%d:%d\n", entry->update.day, entry->update.month,
+               entry->update.year, entry->update.hour, entry->update.minutes, entry->update.seconds);
+        fprintf(stderr, "First Block: %d\n", entry->first_block);
+    }
+}
+
+void print_dir_entry(dir_entry_t* dir) {
+    for(int i = 0; i < DIRENTRYCOUNT; i++) {
+        fprintf(stderr, "Node %d\n", i);
+        print_entry(&dir[i]);
+        fprintf(stderr, "----------\n");
+    }
+}
+
+
+
+int num_of_bars(char *string) {
+    int empty_spaces = 0;
+
+    /* search empty spaces */
+    for (int i = 0; i < strlen(string); ++i)
+        if (string[i] == '/')
+            empty_spaces++;
+
+    return empty_spaces;
+}
+
+char** explode_path(char *string) {
+    const char s[2] = "/";
+    char *token;
+    int i = 0;
+    char str[MAXPATHLENGTH];
+    strncpy(str, string, MAXPATHLENGTH);
+
+    int bars = num_of_bars(str);
+
+    /* alloc memory for array arguments */
+    char **ret = malloc(sizeof(char *) * bars);
+
+    /* get the first token */
+    token = strtok(str, "/");
+
+    while (token != NULL) {
+        //ret[i] = token;
+        ret[i] = malloc(sizeof(char) * strlen(token));
+        strcpy(ret[i], token);
+        token = strtok(NULL, s);
+        i++;
+    }
+
+    return ret;
+}
+
+void delete_path(char** path, int size) {
+    for(int i = 0; i < size; i++)
+        free(path[i]);
+    free(path);
+}
+
 
 void add_dir(const char *dir_name) {
 	curr_dir_idx++;
@@ -88,24 +168,62 @@ void write_to_file(const char *path, const char *new_content) {
  *
  * fi will always be NULL if the file is not currently open, but may also be
  * NULL if the file is open.
- ******************************************************************************/
+ *****************************************************************************/
 static int sad_getattr(const char *path, struct stat *st) {
-	st->st_uid = getuid(); // The owner of the file/directory is the user who mounted the filesystem
-	st->st_gid = getgid(); // The group of the file/directory is the same as the group of the user who mounted the filesystem
-	st->st_atime = time(NULL); // The last "a"ccess of the file/directory is right now
-	st->st_mtime = time(NULL); // The last "m"odification of the file/directory is right now
+    if (strcmp(path, "/") == 0) {
+        st->st_uid = getuid();
+        st->st_gid = getgid();
+        st->st_atime = time(NULL);
+        st->st_mtime = time(NULL);
+        st->st_mode = S_IFDIR | 0755;
+        st->st_nlink = 2;
 
-	if (strcmp(path, "/") == 0 || is_dir(path) == 1) {
-		st->st_mode = S_IFDIR | 0755;
-		st->st_nlink = 2; // Why "two" hardlinks instead of "one"? The answer is here: http://unix.stackexchange.com/a/101536
-	} else if (is_file(path) == 1) {
-		st->st_mode = S_IFREG | 0644;
-		st->st_nlink = 1;
-		st->st_size = 1024;
+        return 0;
+    }
+
+    int number_of_bars = num_of_bars(path);
+    char** bars = explode_path(path);
+
+    dir_entry_t *actual_dir = malloc(SECTOR_SIZE);
+    memcpy(actual_dir, root_entry, SECTOR_SIZE);
+    dir_descriptor_t descriptor;
+
+    for(int i = 0; i < number_of_bars-1; i++) {
+        fprintf(stderr, "bars[%d] - %s\n", i, bars[i]);
+        search_dir_entry(actual_dir, &info_sd, bars[i], &descriptor);
+        memcpy(actual_dir, descriptor.entry, SECTOR_SIZE);
+    }
+
+    dir_descriptor_t dir_descriptor;
+    dir_entry_t file;
+
+    int dir_exist = -1;
+    int file_exist = -1;
+
+    dir_exist = search_dir_entry(actual_dir, &info_sd, bars[number_of_bars - 1], &dir_descriptor);
+    file_exist = search_file_in_dir(actual_dir, bars[number_of_bars-1], &file);
+
+	if (dir_exist == 1) {
+	    st->st_uid = dir_descriptor.dir_infos.uid;
+        st->st_gid = dir_descriptor.dir_infos.gid;
+        st->st_atime = time(NULL);
+        st->st_mtime = time(NULL);
+		st->st_mode = dir_descriptor.dir_infos.mode;
+		st->st_nlink = 2;
+	} else if (file_exist == 1) {
+        st->st_uid = file.uid;
+        st->st_gid = file.gid;
+        st->st_atime = time(NULL);
+        st->st_mtime = time(NULL);
+        st->st_mode = file.mode;
+        st->st_nlink = 1;
+		st->st_size = file.size;
 	} else {
 		return -ENOENT;
 	}
 
+	free(actual_dir);
+	delete_path(bars, number_of_bars);
 	return 0;
 }
 
@@ -123,22 +241,43 @@ static int sad_getattr(const char *path, struct stat *st) {
  * entries. It uses the offset parameter and always passes non-zero offset to
  * the filler function. When the buffer is full (or an error happens) the
  * filler function will return '1'.
- ******************************************************************************/
+ *****************************************************************************/
 static int sad_readdir(const char *path, void *buffer, fuse_fill_dir_t filler,
 					   off_t offset, struct fuse_file_info *fi) {
 	filler(buffer, ".", NULL, 0); // Current Directory
 	filler(buffer, "..", NULL, 0); // Parent Directory
 
-	if (strcmp(path, "/") ==
-		0) // If the user is trying to show the files/directories of the root directory show the following
-	{
-		for (int curr_idx = 0; curr_idx <= curr_dir_idx; curr_idx++)
-			filler(buffer, dir_list[curr_idx], NULL, 0);
-
-		for (int curr_idx = 0; curr_idx <= curr_file_idx; curr_idx++)
-			filler(buffer, files_list[curr_idx], NULL, 0);
+	if (strcmp("/", path) == 0) {
+        for(unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
+            if (root_entry[i].mode != EMPTY_TYPE) {
+                filler(buffer, root_entry[i].name, NULL, 0);
+            }
+        }
+        return 0;
 	}
 
+    int number_of_bars = num_of_bars(path);
+    char** bars = explode_path(path);
+
+    dir_entry_t* actual_dir_entry = malloc(SECTOR_SIZE);
+    memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
+    dir_entry_t* actual_dir = NULL;
+    dir_descriptor_t descriptor;
+
+    for(int i = 0; i < number_of_bars; i++) {
+        search_dir_entry(actual_dir_entry, &info_sd, bars[i], &descriptor);
+        memcpy(actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+        actual_dir = &descriptor.dir_infos;
+    }
+
+    for(unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
+        if (actual_dir_entry[i].mode != EMPTY_TYPE) {
+            filler(buffer, actual_dir_entry[i].name, NULL, 0);
+        }
+    }
+
+    free(actual_dir_entry);
+    delete_path(bars, number_of_bars);
 	return 0;
 }
 
@@ -146,7 +285,7 @@ static int sad_readdir(const char *path, void *buffer, fuse_fill_dir_t filler,
  * Open a file
  *
  * Open flags are available in fi->flags. The following rules apply.
- ******************************************************************************/
+ *****************************************************************************/
 static int sad_open(const char *path, struct fuse_file_info *fi) {
 	return 0;
 }
@@ -159,19 +298,31 @@ static int sad_open(const char *path, struct fuse_file_info *fi) {
  * exception to this is when the 'direct_io' mount option is specified, in
  * which case the return value of the read system call will reflect the return
  * value of this operation.
- ******************************************************************************/
+ *****************************************************************************/
 static int sad_read(const char *path, char *buffer, size_t size, off_t offset,
 					struct fuse_file_info *fi) {
-	int file_idx = get_file_index(path);
+    int number_of_bars = num_of_bars(path);
+    char** bars = explode_path(path);
 
-	if (file_idx == -1)
-		return -1;
+    dir_entry_t* actual_dir_entry = malloc(SECTOR_SIZE);
+    memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
+    dir_entry_t* actual_dir = NULL;
+    dir_descriptor_t descriptor;
 
-	char *content = files_content[file_idx];
+    for(int i = 0; i < number_of_bars-1; i++) {
+        search_dir_entry(actual_dir_entry, &info_sd, bars[i], &descriptor);
+        memcpy(actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+        actual_dir = &descriptor.dir_infos;
+    }
 
-	memcpy(buffer, content + offset, size);
+    dir_entry_t file;
+    int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars-1], &file);
 
-	return (int) (strlen(content) - offset);
+    int total = read_file(fat, &info_sd, &file, offset, buffer, size);
+
+    free(actual_dir_entry);
+    delete_path(bars, number_of_bars);
+    return total;
 }
 
 /******************************************************************************
@@ -181,7 +332,7 @@ static int sad_read(const char *path, char *buffer, size_t size, off_t offset,
  * argument includes the space for the terminating null character. If the
  * linkname is too long to fit in the buffer, it should be truncated. The
  * return value should be 0 for success.
- ******************************************************************************/
+ *****************************************************************************/
 int sad_readlink(const char *path, char *link, size_t size) {
 	return 0;
 }
@@ -192,12 +343,35 @@ int sad_readlink(const char *path, char *link, size_t size) {
  * This is called for creation of all non-directory, non-symlink nodes. If the
  * filesystem defines a create() method, then for regular files that will be
  * called instead.
- ******************************************************************************/
+ *****************************************************************************/
 int sad_mknod(const char *path, mode_t mode, dev_t dev) {
-	path++;
-	add_file(path);
+    int number_of_bars = num_of_bars(path);
+    char** bars = explode_path(path);
 
-	return 0;
+    dir_entry_t* actual_dir_entry = malloc(SECTOR_SIZE);
+    memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
+    dir_entry_t* actual_dir = NULL;
+    dir_descriptor_t descriptor;
+
+    for(int i = 0; i < number_of_bars-1; i++) {
+        search_dir_entry(actual_dir_entry, &info_sd, bars[i], &descriptor);
+        memcpy(actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+        actual_dir = &descriptor.dir_infos;
+    }
+
+    char name[MAXNAME];
+    memset(name, 0, MAXNAME);
+    strcpy(name, bars[number_of_bars-1]);
+
+    struct fuse_context* context = fuse_get_context();
+    create_empty_file(actual_dir, actual_dir_entry, &info_sd, fat, name, mode, context->uid, context->gid);
+
+    if (actual_dir == NULL)
+        memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+
+    free(actual_dir_entry);
+    delete_path(bars, number_of_bars);
+    return 0;
 }
 
 /******************************************************************************
@@ -206,31 +380,54 @@ int sad_mknod(const char *path, mode_t mode, dev_t dev) {
  * Note that the mode argument may not have the type specification bits set,
  * i.e. S_ISDIR(mode) can be false. To obtain the correct directory type bits
  * use mode|S_IFDIR
- ******************************************************************************/
+ *****************************************************************************/
 int sad_mkdir(const char *path, mode_t mode) {
-	path++;
-	add_dir(path);
+    int number_of_bars = num_of_bars(path);
+    char** bars = explode_path(path);
 
+    dir_entry_t* actual_dir_entry = malloc(SECTOR_SIZE);
+    memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
+    dir_entry_t* actual_dir = NULL;
+    dir_descriptor_t descriptor;
+
+    for(int i = 0; i < number_of_bars-1; i++) {
+        search_dir_entry(actual_dir_entry, &info_sd, bars[i], &descriptor);
+        memcpy(actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+        actual_dir = &descriptor.dir_infos;
+    }
+
+    char name[MAXNAME];
+    memset(name, 0, MAXNAME);
+    strcpy(name, bars[number_of_bars-1]);
+
+    struct fuse_context* context = fuse_get_context();
+    create_empty_dir(actual_dir, actual_dir_entry, &info_sd, fat, name, mode|S_IFDIR, context->uid, context->gid);
+
+    if (actual_dir == NULL)
+        memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+
+    delete_path(bars, number_of_bars);
+    free(actual_dir_entry);
 	return 0;
 }
 
 /******************************************************************************
  * Remove a file
- ******************************************************************************/
+ *****************************************************************************/
 int sad_unlink(const char *path) {
 	return 0;
 }
 
 /******************************************************************************
  * Remove a directory
- ******************************************************************************/
+ *****************************************************************************/
 int sad_rmdir(const char *path) {
 	return 0;
 }
 
 /******************************************************************************
  * Create a symbolic link
- ******************************************************************************/
+ *****************************************************************************/
 int sad_symlink(const char *path, const char *link) {
 	return 0;
 }
@@ -243,14 +440,14 @@ int sad_symlink(const char *path, const char *link) {
  * an error instead. If RENAME_EXCHANGE is specified, the filesystem must
  * atomically exchange the two files, i.e. both must exist and neither may be
  * deleted.
- ******************************************************************************/
+ *****************************************************************************/
 int sad_rename(const char *path, const char *newpath) {
 	return 0;
 }
 
 /******************************************************************************
  * Create a hard link to a file
- ******************************************************************************/
+ *****************************************************************************/
 int sad_link(const char *path, const char *newpath) {
 	return 0;
 }
@@ -260,7 +457,7 @@ int sad_link(const char *path, const char *newpath) {
  *
  * fi will always be NULL if the file is not currenlty open, but may also be
  * NULL if the file is open.
- ******************************************************************************/
+ *****************************************************************************/
 int sad_chmod(const char *path, mode_t mode) {
 	return 0;
 }
@@ -273,7 +470,7 @@ int sad_chmod(const char *path, mode_t mode) {
  *
  * Unless FUSE_CAP_HANDLE_KILLPRIV is disabled, this method is expected to reset
  * the setuid and setgid bits.
- ******************************************************************************/
+ *****************************************************************************/
 int sad_chown(const char *path, uid_t uid, gid_t gid) {
 	return 0;
 }
@@ -286,14 +483,14 @@ int sad_chown(const char *path, uid_t uid, gid_t gid) {
  *
  * Unless FUSE_CAP_HANDLE_KILLPRIV is disabled, this method is expected to reset
  * the setuid and setgid bits.
- ******************************************************************************/
+ *****************************************************************************/
 int sad_truncate(const char *path, off_t newsize) {
 	return 0;
 }
 
 /******************************************************************************
  * Change file last access and modification times
- ******************************************************************************/
+ *****************************************************************************/
 int sad_utime(const char *path, struct utimbuf *ubuf) {
 	return 0;
 }
@@ -306,19 +503,41 @@ int sad_utime(const char *path, struct utimbuf *ubuf) {
  *
  * Unless FUSE_CAP_HANDLE_KILLPRIV is disabled, this method is expected to reset
  * the setuid and setgid bits.
- ******************************************************************************/
+ *****************************************************************************/
 int sad_write(const char *path, const char *buffer, size_t size, off_t offset,
 			  struct fuse_file_info *fi) {
-	write_to_file(path, buffer);
+    int number_of_bars = num_of_bars(path);
+    char** bars = explode_path(path);
 
-	return size;
+    dir_entry_t* actual_dir_entry = malloc(SECTOR_SIZE);
+    memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
+    dir_entry_t* actual_dir = NULL;
+    dir_descriptor_t descriptor;
+
+    for(int i = 0; i < number_of_bars-1; i++) {
+        search_dir_entry(actual_dir_entry, &info_sd, bars[i], &descriptor);
+        memcpy(actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+        actual_dir = &descriptor.dir_infos;
+    }
+
+    dir_entry_t file;
+    int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars-1], &file);
+
+    int total = write_file(fat, &info_sd, actual_dir, actual_dir_entry, &file, offset, buffer, size);
+
+    if (actual_dir == NULL)
+        memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+
+    delete_path(bars, number_of_bars);
+    free(actual_dir_entry);
+	return total;
 }
 
 /******************************************************************************
  * Get file system statistics
  *
  * The 'f_favail', 'f_fsid' and 'f_flag' fields are ignored
- ******************************************************************************/
+ *****************************************************************************/
 int sad_statfs(const char *path, struct statvfs *statv) {
 	return 0;
 }
@@ -389,7 +608,7 @@ int sad_opendir(const char *path, struct fuse_file_info *fi) {
 
 /******************************************************************************
  * Release directory
- ******************************************************************************/
+ *****************************************************************************/
 int sad_releasedir(const char *path, struct fuse_file_info *fi) {
 	return 0;
 }
@@ -399,7 +618,7 @@ int sad_releasedir(const char *path, struct fuse_file_info *fi) {
  *
  * If the datasync parameter is non-zero, then only the user data should be
  * flushed, not the meta data
- ******************************************************************************/
+ *****************************************************************************/
 int sad_fsyncdir(const char *path, int datasync, struct fuse_file_info *fi) {
 	return 0;
 }
@@ -410,8 +629,9 @@ int sad_fsyncdir(const char *path, int datasync, struct fuse_file_info *fi) {
  * The return value will passed in the private_data field of struct fuse_context
  * to all file operations, and as a parameter to the destroy() method. It
  * overrides the initial value provided to fuse_main() / fuse_new().
- ******************************************************************************/
+ *****************************************************************************/
 void *sad_init(struct fuse_conn_info *conn) {
+	fprintf(stderr, "S.A.D. Filesystem successfully initialized.");
 	return 0;
 }
 
@@ -419,9 +639,9 @@ void *sad_init(struct fuse_conn_info *conn) {
  * Clean up filesystem
  *
  * Called on filesystem exit.
- ******************************************************************************/
+ *****************************************************************************/
 void sad_destroy(void *userdata) {
-
+	fprintf(stderr, "S.A.D. Filesystem successfully destroyed.");
 }
 
 /******************************************************************************
@@ -431,21 +651,21 @@ void sad_destroy(void *userdata) {
  * 'default_permissions' mount option is given, this method is not called.
  *
  * This method is not called under Linux kernel versions 2.4.x
- ******************************************************************************/
+ *****************************************************************************/
 int sad_access(const char *path, int mask) {
 	return 0;
 }
 
 /******************************************************************************
  *
- ******************************************************************************/
+ *****************************************************************************/
 int sad_ftruncate(const char *path, off_t offset, struct fuse_file_info *fi) {
 	return 0;
 }
 
 /******************************************************************************
  *
- ******************************************************************************/
+ *****************************************************************************/
 int sad_fgetattr(const char *path, struct stat *statbuf, struct fuse_file_info *fi) {
 	return 0;
 }
@@ -477,7 +697,6 @@ static struct fuse_operations sad_operations = {
 		.open = sad_open,
 		.read = sad_read,
 		.readdir = sad_readdir,
-
 		.readlink = sad_readlink,
 		.getdir = NULL, // .getdir is deprecated
 		.mknod = sad_mknod,
@@ -508,7 +727,7 @@ static struct fuse_operations sad_operations = {
 
 /******************************************************************************
  * Main function
- ******************************************************************************/
+ *****************************************************************************/
 int main(int argc, char *argv[]) {
 	int fuse_status;
 
@@ -516,6 +735,18 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "Running SADFS as root opens unacceptable security holes\n");
 		return EXIT_FAILURE;
 	}
+
+    fd = open(virtual_disk, O_RDWR);
+
+    if (strcmp(argv[1], "-format") == 0) {
+        printf("Formatting disk ..........");
+        format(3862528);
+        printf("   disk successfully formatted\n");
+
+        return 0;
+    }
+
+    init(&info_sd, &fat, &root_entry);
 
 	fprintf(stderr, "Using Fuse library version %d.%d\n", FUSE_MAJOR_VERSION, FUSE_MINOR_VERSION);
 	fuse_status = fuse_main(argc, argv, &sad_operations, NULL);
