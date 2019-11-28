@@ -535,9 +535,34 @@ int sad_utime(const char *path, struct utimbuf *ubuf) {
  ******************************************************************************/
 int sad_write(const char *path, const char *buffer, size_t size, off_t offset,
 			  struct fuse_file_info *fi) {
-	write_to_file(path, buffer);
+    fprintf(stderr, "\nWrite - %s\n", path);
+    int number_of_bars = num_of_bars(path);
+    char** bars = explode_path(path);
 
-	return size;
+    dir_entry_t* actual_dir_entry = malloc(SECTOR_SIZE);
+    memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
+    dir_entry_t* actual_dir = NULL;
+    dir_descriptor_t descriptor;
+
+    for(int i = 0; i < number_of_bars-1; i++) {
+        search_dir_entry(actual_dir_entry, &info_sd, bars[i], &descriptor);
+        memcpy(actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+        actual_dir = &descriptor.dir_infos;
+    }
+
+    if (actual_dir == NULL)
+        fprintf(stderr, "\n\nActual dir name: root\n");
+    else
+        fprintf(stderr, "\n\nActual dir name: %s\n", descriptor.dir_infos.name);
+
+    dir_entry_t file;
+    int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars-1], &file);
+
+    fprintf(stderr, "passou aqui\n");
+    int total = write_file(fat, &info_sd, actual_dir, actual_dir_entry, &file, offset, buffer, size);
+
+    free(actual_dir_entry);
+	return total;
 }
 
 /******************************************************************************
