@@ -26,12 +26,12 @@ typedef uint8_t byte_t;
 typedef uint32_t fat_entry_t;
 
 struct date_format {
-    unsigned int day:5;
-    unsigned int month: 4;
-    unsigned int year:12;
-    unsigned int hour:5;
-    unsigned int minutes:6;
-    unsigned int seconds:6;
+    unsigned int day:6;
+    unsigned int month: 5;
+    unsigned int year:13;
+    unsigned int hour:6;
+    unsigned int minutes:7;
+    unsigned int seconds:7;
 } __attribute__((packed));
 typedef struct date_format date_t;
 
