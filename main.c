@@ -638,6 +638,7 @@ int sad_fsyncdir(const char *path, int datasync, struct fuse_file_info *fi) {
  * overrides the initial value provided to fuse_main() / fuse_new().
  ******************************************************************************/
 void *sad_init(struct fuse_conn_info *conn) {
+	fprintf(stderr, "S.A.D. Filesystem successfully initialized.");
 	return 0;
 }
 
@@ -647,7 +648,7 @@ void *sad_init(struct fuse_conn_info *conn) {
  * Called on filesystem exit.
  ******************************************************************************/
 void sad_destroy(void *userdata) {
-
+	fprintf(stderr, "S.A.D. Filesystem successfully destroyed.");
 }
 
 /******************************************************************************
