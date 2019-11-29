@@ -70,8 +70,13 @@ int create_empty_file(dir_entry_t* dir, dir_entry_t* dir_entry_list, info_entry_
 int create_empty_dir(dir_entry_t* dir, dir_entry_t* dir_entry_list, info_entry_t* info, fat_entry_t * fat, const char* name, mode_t mode, uid_t uid, gid_t gid);
 int search_dir_entry(dir_entry_t* dir_entry, info_entry_t* info, const char* name, dir_descriptor_t* descriptor);
 int search_file_in_dir(dir_entry_t* dir_entry, const char* name, dir_entry_t* file);
-int write_file(fat_entry_t * fat, const info_entry_t* info, dir_entry_t* dir, dir_entry_t* dir_entry_list, dir_entry_t* file, int offset, char* buffer, int size);
-int read_file(const fat_entry_t * fat, const info_entry_t* info, dir_entry_t* file, int offset, char* buffer, int size);
+
+int
+write_file(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *dir, dir_entry_t *dir_entry_list, dir_entry_t *file,
+		   int offset, const char *buffer, int size);
+
+int read_file(const fat_entry_t *fat, const info_entry_t *info, dir_entry_t *file, int offset, char *buffer,
+			  unsigned int size);
 int delete_file(fat_entry_t * fat, const info_entry_t* info, dir_entry_t* dir, dir_entry_t* dir_entry_list, dir_entry_t* file);
 int delete_dir(fat_entry_t * fat, const info_entry_t* info, dir_entry_t* father_dir, dir_entry_t* dir_entry_list, dir_entry_t* dir);
 
