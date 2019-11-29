@@ -67,6 +67,30 @@ void delete_path(char **path, int size) {
 	free(path);
 }
 
+void find_dir_and_entrys(char** bars, int num_of_bars, dir_entry_t** actual_dir_entry, dir_entry_t** actual_dir) {
+    *actual_dir_entry = malloc(SECTOR_SIZE);
+    memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
+    *actual_dir = NULL;
+    dir_descriptor_t descriptor;
+
+    for(int i = 0; i < num_of_bars; i++) {
+        search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
+        memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+        *actual_dir = &descriptor.dir_infos;
+    }
+}
+
+void find_dir_entrys(char** bars, int num_of_bars, dir_entry_t** actual_dir_entry) {
+    *actual_dir_entry = malloc(SECTOR_SIZE);
+    memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
+    dir_descriptor_t descriptor;
+
+    for(int i = 0; i < num_of_bars; i++) {
+        search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
+        memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+    }
+}
+
 time_t date_to_time(date_t *date) {
 	time_t raw_time;
 	struct tm *time_info;
@@ -110,15 +134,8 @@ static int sad_getattr(const char *path, struct stat *st) {
 	int number_of_bars = num_of_bars(path);
 	char **bars = explode_path(path);
 
-	dir_entry_t *actual_dir = malloc(SECTOR_SIZE);
-	memcpy(actual_dir, root_entry, SECTOR_SIZE);
-	dir_descriptor_t descriptor;
-
-	for (int i = 0; i < number_of_bars - 1; i++) {
-		fprintf(stderr, "bars[%d] - %s\n", i, bars[i]);
-		search_dir_entry(actual_dir, &info_sd, bars[i], &descriptor);
-		memcpy(actual_dir, descriptor.entry, SECTOR_SIZE);
-	}
+    dir_entry_t *actual_dir;
+    find_dir_entrys(bars, number_of_bars-1, &actual_dir);
 
 	dir_descriptor_t dir_descriptor;
 	dir_entry_t file;
@@ -187,16 +204,8 @@ static int sad_readdir(const char *path, void *buffer, fuse_fill_dir_t filler,
 	int number_of_bars = num_of_bars(path);
 	char **bars = explode_path(path);
 
-	dir_entry_t *actual_dir_entry = malloc(SECTOR_SIZE);
-	memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
-	dir_entry_t *actual_dir = NULL;
-	dir_descriptor_t descriptor;
-
-	for (int i = 0; i < number_of_bars; i++) {
-		search_dir_entry(actual_dir_entry, &info_sd, bars[i], &descriptor);
-		memcpy(actual_dir_entry, descriptor.entry, SECTOR_SIZE);
-		actual_dir = &descriptor.dir_infos;
-	}
+    dir_entry_t *actual_dir_entry;
+    find_dir_entrys(bars, number_of_bars, &actual_dir_entry);
 
 	for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
 		if (actual_dir_entry[i].mode != EMPTY_TYPE) {
@@ -232,16 +241,8 @@ static int sad_read(const char *path, char *buffer, size_t size, off_t offset,
 	int number_of_bars = num_of_bars(path);
 	char **bars = explode_path(path);
 
-	dir_entry_t *actual_dir_entry = malloc(SECTOR_SIZE);
-	memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
-	dir_entry_t *actual_dir = NULL;
-	dir_descriptor_t descriptor;
-
-	for (int i = 0; i < number_of_bars - 1; i++) {
-		search_dir_entry(actual_dir_entry, &info_sd, bars[i], &descriptor);
-		memcpy(actual_dir_entry, descriptor.entry, SECTOR_SIZE);
-		actual_dir = &descriptor.dir_infos;
-	}
+    dir_entry_t *actual_dir_entry;
+    find_dir_entrys(bars, number_of_bars - 1, &actual_dir_entry);
 
 	dir_entry_t file;
 	int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1], &file);
@@ -276,16 +277,9 @@ int sad_mknod(const char *path, mode_t mode, dev_t dev) {
 	int number_of_bars = num_of_bars(path);
 	char **bars = explode_path(path);
 
-	dir_entry_t *actual_dir_entry = malloc(SECTOR_SIZE);
-	memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
-	dir_entry_t *actual_dir = NULL;
-	dir_descriptor_t descriptor;
-
-	for (int i = 0; i < number_of_bars - 1; i++) {
-		search_dir_entry(actual_dir_entry, &info_sd, bars[i], &descriptor);
-		memcpy(actual_dir_entry, descriptor.entry, SECTOR_SIZE);
-		actual_dir = &descriptor.dir_infos;
-	}
+    dir_entry_t *actual_dir_entry;
+    dir_entry_t *actual_dir;
+    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
 	char name[MAXNAME];
 	memset(name, 0, MAXNAME);
@@ -313,16 +307,9 @@ int sad_mkdir(const char *path, mode_t mode) {
 	int number_of_bars = num_of_bars(path);
 	char **bars = explode_path(path);
 
-	dir_entry_t *actual_dir_entry = malloc(SECTOR_SIZE);
-	memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
-	dir_entry_t *actual_dir = NULL;
-	dir_descriptor_t descriptor;
-
-	for (int i = 0; i < number_of_bars - 1; i++) {
-		search_dir_entry(actual_dir_entry, &info_sd, bars[i], &descriptor);
-		memcpy(actual_dir_entry, descriptor.entry, SECTOR_SIZE);
-		actual_dir = &descriptor.dir_infos;
-	}
+    dir_entry_t *actual_dir_entry;
+    dir_entry_t *actual_dir;
+    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
 	char name[MAXNAME];
 	memset(name, 0, MAXNAME);
@@ -346,16 +333,9 @@ int sad_unlink(const char *path) {
 	int number_of_bars = num_of_bars(path);
 	char **bars = explode_path(path);
 
-	dir_entry_t *actual_dir_entry = malloc(SECTOR_SIZE);
-	memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
-	dir_entry_t *actual_dir = NULL;
-	dir_descriptor_t descriptor;
-
-	for (int i = 0; i < number_of_bars - 1; i++) {
-		search_dir_entry(actual_dir_entry, &info_sd, bars[i], &descriptor);
-		memcpy(actual_dir_entry, descriptor.entry, SECTOR_SIZE);
-		actual_dir = &descriptor.dir_infos;
-	}
+    dir_entry_t *actual_dir_entry;
+    dir_entry_t *actual_dir;
+    find_dir_and_entrys(bars, number_of_bars-1, &actual_dir_entry, &actual_dir);
 
 	dir_entry_t file;
 	int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1], &file);
@@ -378,16 +358,9 @@ int sad_rmdir(const char *path) {
 	int number_of_bars = num_of_bars(path);
 	char **bars = explode_path(path);
 
-	dir_entry_t *actual_dir_entry = malloc(SECTOR_SIZE);
-	memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
-	dir_entry_t *actual_dir = NULL;
-	dir_descriptor_t descriptor;
-
-	for (int i = 0; i < number_of_bars - 1; i++) {
-		search_dir_entry(actual_dir_entry, &info_sd, bars[i], &descriptor);
-		memcpy(actual_dir_entry, descriptor.entry, SECTOR_SIZE);
-		actual_dir = &descriptor.dir_infos;
-	}
+    dir_entry_t *actual_dir_entry;
+    dir_entry_t *actual_dir;
+    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
 	dir_descriptor_t dirDescriptor;
 	search_dir_entry(actual_dir_entry, &info_sd, bars[number_of_bars - 1], &dirDescriptor);
@@ -487,16 +460,9 @@ int sad_write(const char *path, const char *buffer, size_t size, off_t offset,
 	int number_of_bars = num_of_bars(path);
 	char **bars = explode_path(path);
 
-	dir_entry_t *actual_dir_entry = malloc(SECTOR_SIZE);
-	memcpy(actual_dir_entry, root_entry, SECTOR_SIZE);
-	dir_entry_t *actual_dir = NULL;
-	dir_descriptor_t descriptor;
-
-	for (int i = 0; i < number_of_bars - 1; i++) {
-		search_dir_entry(actual_dir_entry, &info_sd, bars[i], &descriptor);
-		memcpy(actual_dir_entry, descriptor.entry, SECTOR_SIZE);
-		actual_dir = &descriptor.dir_infos;
-	}
+    dir_entry_t *actual_dir_entry;
+    dir_entry_t *actual_dir;
+    find_dir_and_entrys(bars, number_of_bars -1, &actual_dir_entry, &actual_dir);
 
 	dir_entry_t file;
 	int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1], &file);
