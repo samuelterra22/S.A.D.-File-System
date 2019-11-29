@@ -279,6 +279,20 @@ int search_file_in_dir(dir_entry_t *dir_entry, const char *name, dir_entry_t *fi
 	return -1;
 }
 
+int search_entry_in_dir(dir_entry_t *dir_entry, const char *name, dir_entry_t *entry) {
+    for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
+        if (dir_entry[i].mode != EMPTY_TYPE) {
+            if (strcmp(dir_entry[i].name, name) == 0) {
+                memcpy(entry, &dir_entry[i], sizeof(dir_entry_t));
+
+                return 1;
+            }
+        }
+    }
+
+    return -1;
+}
+
 int search_file_index_in_dir(dir_entry_t *dir_entry, const char *name) {
 	for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
 		if (dir_entry[i].mode != EMPTY_TYPE) {
@@ -541,7 +555,7 @@ int add_entry_in_dir_entry(dir_entry_t* dir, dir_entry_t* dir_entry_list, dir_en
     int index_in_dir_entry = get_first_empty_dir_entry(dir_entry_list, info->dir_entry_number);
     if (index_in_dir_entry == -1) return -1;
 
-    memcpy(&dir_entry_list[index_in_dir_entry], &entry, sizeof(dir_entry_t));
+    memcpy(&dir_entry_list[index_in_dir_entry], entry, sizeof(dir_entry_t));
 
     uint32_t sector_to_write;
     if (dir == NULL)
@@ -555,7 +569,7 @@ int add_entry_in_dir_entry(dir_entry_t* dir, dir_entry_t* dir_entry_list, dir_en
 
 int update_entry(dir_entry_t *father_dir, dir_entry_t *dir_entry_list, dir_entry_t *entry, const info_entry_t *info,
                  char* name, uid_t uid, gid_t gid, mode_t mode) {
-    int file_index = search_dir_index_in_dir(dir_entry_list, entry->name);
+    int file_index = search_file_index_in_dir(dir_entry_list, entry->name);
     int dir_index = search_dir_index_in_dir(dir_entry_list, entry->name);
     if (file_index == -1 && dir_index) return -1;
 

@@ -69,6 +69,7 @@ void release(fat_entry_t** fat_entry, dir_entry_t** root_dir);
 int create_empty_file(dir_entry_t* dir, dir_entry_t* dir_entry_list, info_entry_t* info, fat_entry_t * fat, const char* name, mode_t mode, uid_t uid, gid_t gid);
 int create_empty_dir(dir_entry_t* dir, dir_entry_t* dir_entry_list, info_entry_t* info, fat_entry_t * fat, const char* name, mode_t mode, uid_t uid, gid_t gid);
 int search_dir_entry(dir_entry_t* dir_entry, info_entry_t* info, const char* name, dir_descriptor_t* descriptor);
+int search_entry_in_dir(dir_entry_t *dir_entry, const char *name, dir_entry_t *entry);
 int search_file_in_dir(dir_entry_t* dir_entry, const char* name, dir_entry_t* file);
 
 int
