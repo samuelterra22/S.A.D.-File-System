@@ -20,46 +20,9 @@
 #include <stdlib.h>
 #include "minifat/minifat.h"
 
-char dir_list[256][256];
-int curr_dir_idx = -1;
-
-char files_list[256][256];
-int curr_file_idx = -1;
-
-char files_content[256][256];
-int curr_file_content_idx = -1;
-
-
 info_entry_t info_sd;
 fat_entry_t *fat;
 dir_entry_t *root_entry;
-
-
-void print_entry(dir_entry_t *entry) {
-	if (entry->mode == EMPTY_TYPE) {
-		fprintf(stderr, "Empty node\n");
-	} else {
-		fprintf(stderr, "Name: %s\n", entry->name);
-		fprintf(stderr, "Mode: %o\n", entry->mode);
-		fprintf(stderr, "UID: %d\n", entry->uid);
-		fprintf(stderr, "GID: %d\n", entry->gid);
-		fprintf(stderr, "Size: %d\n", entry->size);
-		fprintf(stderr, "Creation time: %d/%d/%d - %d:%d:%d\n", entry->create.day, entry->create.month,
-				entry->create.year, entry->create.hour, entry->create.minutes, entry->create.seconds);
-		fprintf(stderr, "Update time: %d/%d/%d - %d:%d:%d\n", entry->update.day, entry->update.month,
-				entry->update.year, entry->update.hour, entry->update.minutes, entry->update.seconds);
-		fprintf(stderr, "First Block: %d\n", entry->first_block);
-	}
-}
-
-void print_dir_entry(dir_entry_t *dir) {
-	for (int i = 0; i < DIRENTRYCOUNT; i++) {
-		fprintf(stderr, "Node %d\n", i);
-		print_entry(&dir[i]);
-		fprintf(stderr, "----------\n");
-	}
-}
-
 
 int num_of_bars(const char *string) {
 	int empty_spaces = 0;
@@ -102,59 +65,6 @@ void delete_path(char **path, int size) {
 	for (int i = 0; i < size; i++)
 		free(path[i]);
 	free(path);
-}
-
-
-void add_dir(const char *dir_name) {
-	curr_dir_idx++;
-	strcpy(dir_list[curr_dir_idx], dir_name);
-}
-
-int is_dir(const char *path) {
-	path++; // Eliminating "/" in the path
-
-	for (int curr_idx = 0; curr_idx <= curr_dir_idx; curr_idx++)
-		if (strcmp(path, dir_list[curr_idx]) == 0)
-			return 1;
-
-	return 0;
-}
-
-void add_file(const char *filename) {
-	curr_file_idx++;
-	strcpy(files_list[curr_file_idx], filename);
-
-	curr_file_content_idx++;
-	strcpy(files_content[curr_file_content_idx], "");
-}
-
-int is_file(const char *path) {
-	path++; // Eliminating "/" in the path
-
-	for (int curr_idx = 0; curr_idx <= curr_file_idx; curr_idx++)
-		if (strcmp(path, files_list[curr_idx]) == 0)
-			return 1;
-
-	return 0;
-}
-
-int get_file_index(const char *path) {
-	path++; // Eliminating "/" in the path
-
-	for (int curr_idx = 0; curr_idx <= curr_file_idx; curr_idx++)
-		if (strcmp(path, files_list[curr_idx]) == 0)
-			return curr_idx;
-
-	return -1;
-}
-
-void write_to_file(const char *path, const char *new_content) {
-	int file_idx = get_file_index(path);
-
-	if (file_idx == -1) // No such file
-		return;
-
-	strcpy(files_content[file_idx], new_content);
 }
 
 time_t date_to_time(date_t *date) {
