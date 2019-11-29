@@ -531,7 +531,7 @@ int delete_dir(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *father_d
 	if (father_dir == NULL)
 		sector_to_write = info->sector_per_fat + 1;
 	else
-		sector_to_write = info->sector_per_fat + 1 + dir->first_block;
+		sector_to_write = info->sector_per_fat + 1 + father_dir->first_block;
 	write_sector(sector_to_write, dir_entry_list);
 
 	return 1;
