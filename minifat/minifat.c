@@ -537,4 +537,47 @@ int delete_dir(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *father_d
 	return 1;
 }
 
+int add_entry_in_dir_entry(dir_entry_t* dir, dir_entry_t* dir_entry_list, dir_entry_t* entry, const info_entry_t* info) {
+    int index_in_dir_entry = get_first_empty_dir_entry(dir_entry_list, info->dir_entry_number);
+    if (index_in_dir_entry == -1) return -1;
+
+    memcpy(&dir_entry_list[index_in_dir_entry], &entry, sizeof(dir_entry_t));
+
+    uint32_t sector_to_write;
+    if (dir == NULL)
+        sector_to_write = info->sector_per_fat+1;
+    else
+        sector_to_write = info->sector_per_fat+1+dir->first_block;
+    write_sector(sector_to_write, dir_entry_list);
+
+    return 0;
+}
+
+int update_entry(dir_entry_t *father_dir, dir_entry_t *dir_entry_list, dir_entry_t *entry, const info_entry_t *info,
+                 char* name, uid_t uid, gid_t gid, mode_t mode) {
+    int file_index = search_dir_index_in_dir(dir_entry_list, entry->name);
+    int dir_index = search_dir_index_in_dir(dir_entry_list, entry->name);
+    if (file_index == -1 && dir_index) return -1;
+
+    strcpy(entry->name, name);
+    entry->uid = uid;
+    entry->gid = gid;
+    entry->mode = mode;
+
+    if (file_index > -1)
+        memcpy(&dir_entry_list[file_index], entry, sizeof(dir_entry_t));
+    else
+        memcpy(&dir_entry_list[dir_index], entry, sizeof(dir_entry_t));
+
+    // update dir entry list
+    uint32_t sector_to_write;
+    if (father_dir == NULL)
+        sector_to_write = info->sector_per_fat + 1;
+    else
+        sector_to_write = info->sector_per_fat + 1 + father_dir->first_block;
+    write_sector(sector_to_write, dir_entry_list);
+
+    return 1;
+}
+
 #pragma clang diagnostic pop
