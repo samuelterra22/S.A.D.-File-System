@@ -506,7 +506,23 @@ int sad_chown(const char *path, uid_t uid, gid_t gid) {
  * the setuid and setgid bits.
  *****************************************************************************/
 int sad_truncate(const char *path, off_t newsize) {
-	return 0;
+    int number_of_bars = num_of_bars(path);
+    char **bars = explode_path(path);
+
+    dir_entry_t *actual_dir_entry;
+    dir_entry_t *actual_dir;
+    find_dir_and_entrys(bars, number_of_bars -1, &actual_dir_entry, &actual_dir);
+
+    dir_entry_t file;
+    int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1], &file);
+
+    int total = resize_file(fat, &info_sd, actual_dir, actual_dir_entry, &file, newsize);
+
+    if (actual_dir == NULL)
+        memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+
+    delete_path(bars, number_of_bars);
+    free(actual_dir_entry);
 }
 
 /******************************************************************************
