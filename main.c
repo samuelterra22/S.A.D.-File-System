@@ -78,11 +78,18 @@ void find_dir_and_entrys(char** bars, int num_of_bars, dir_entry_t** actual_dir_
     memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
     *actual_dir = NULL;
     dir_descriptor_t descriptor;
+    int has_malloc = 0;
 
     for(int i = 0; i < num_of_bars; i++) {
         search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
         memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
-        *actual_dir = &descriptor.dir_infos;
+
+        if (has_malloc == 0) {
+            *actual_dir = malloc(sizeof(dir_entry_t));
+            has_malloc = 1;
+        }
+        //*actual_dir = &descriptor.dir_infos;
+        memcpy(*actual_dir, &descriptor.dir_infos, sizeof(dir_entry_t));
     }
 }
 
@@ -447,7 +454,7 @@ int sad_rename(const char *path, const char *newpath) {
 
     update_entry(actual_dir_src, actual_dir_entry_src, &entry_src, &info_sd, entry_src.name, entry_src.uid, entry_src.gid, EMPTY_TYPE);
 
-    if (strcmp(dest_path, "/") == 0)
+    if ((strcmp(dest_path, "/") == 0) || (strcmp(origin_path, "/") == 0))
         memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
 
     return 0;
