@@ -24,6 +24,12 @@ info_entry_t info_sd;
 fat_entry_t *fat;
 dir_entry_t *root_entry;
 
+void print_entry(dir_entry_t* entry) {
+    for(int i = 0; i < DIRENTRYCOUNT; i++) {
+        if (entry[i].mode == EMPTY_TYPE) fprintf(stderr, "emtpy "); else fprintf(stderr, "%s ", entry[i].name);
+    }
+}
+
 int num_of_bars(const char *string) {
 	int empty_spaces = 0;
 
@@ -72,11 +78,18 @@ void find_dir_and_entrys(char** bars, int num_of_bars, dir_entry_t** actual_dir_
     memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
     *actual_dir = NULL;
     dir_descriptor_t descriptor;
+    int has_malloc = 0;
 
     for(int i = 0; i < num_of_bars; i++) {
         search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
         memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
-        *actual_dir = &descriptor.dir_infos;
+
+        if (has_malloc == 0) {
+            *actual_dir = malloc(sizeof(dir_entry_t));
+            has_malloc = 1;
+        }
+        //*actual_dir = &descriptor.dir_infos;
+        memcpy(*actual_dir, &descriptor.dir_infos, sizeof(dir_entry_t));
     }
 }
 
@@ -88,6 +101,16 @@ void find_dir_entrys(char** bars, int num_of_bars, dir_entry_t** actual_dir_entr
     for(int i = 0; i < num_of_bars; i++) {
         search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
         memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+    }
+}
+
+void get_path_without_dest(char** bars, int num_bars, char* str) {
+    memset(str, 0, MAXPATHLENGTH);
+    strcat(str, "/");
+
+    for(int i = 0; i < num_bars-1; i++) {
+        strcat(str, bars[i]);
+        strcat(str, "/");
     }
 }
 
@@ -393,7 +416,54 @@ int sad_symlink(const char *path, const char *link) {
  * deleted.
  *****************************************************************************/
 int sad_rename(const char *path, const char *newpath) {
-	return 0;
+    int number_of_bars_src = num_of_bars(path);
+    char **bars_src = explode_path(path);
+
+    int number_of_bars_dest = num_of_bars(newpath);
+    char **bars_dest = explode_path(newpath);
+
+    dir_entry_t *actual_dir_entry_src;
+    dir_entry_t *actual_dir_src;
+    find_dir_and_entrys(bars_src, number_of_bars_src - 1, &actual_dir_entry_src, &actual_dir_src);
+
+    dir_entry_t *actual_dir_entry_dest;
+    dir_entry_t *actual_dir_dest;
+    find_dir_and_entrys(bars_dest, number_of_bars_dest - 1, &actual_dir_entry_dest, &actual_dir_dest);
+
+    dir_entry_t entry_src;
+    search_entry_in_dir(actual_dir_entry_src, bars_src[number_of_bars_src - 1], &entry_src);
+
+    dir_entry_t entry_dest;
+    memcpy(&entry_dest, &entry_src, sizeof(dir_entry_t));
+
+    strcpy(entry_dest.name, bars_dest[number_of_bars_dest-1]);
+    add_entry_in_dir_entry(actual_dir_dest, actual_dir_entry_dest, &entry_dest, &info_sd);
+
+    char origin_path[MAXPATHLENGTH];
+    char dest_path[MAXPATHLENGTH];
+
+    get_path_without_dest(bars_src, number_of_bars_src, origin_path);
+    get_path_without_dest(bars_dest, number_of_bars_dest, dest_path);
+
+    fprintf(stderr, "scr: %s\n", origin_path);
+    fprintf(stderr, "dest: %s\n", dest_path);
+
+    if (strcmp(origin_path, dest_path) == 0) {
+        memcpy(actual_dir_entry_src, actual_dir_entry_dest, SECTOR_SIZE);
+    }
+
+    update_entry(actual_dir_src, actual_dir_entry_src, &entry_src, &info_sd, entry_src.name, entry_src.uid, entry_src.gid, EMPTY_TYPE);
+
+    if (strcmp(dest_path, "/") == 0 && strcmp(origin_path, dest_path) != 0)
+        memcpy(root_entry, actual_dir_entry_dest, SECTOR_SIZE);
+    else if (strcmp(dest_path, "/") == 0 && strcmp(origin_path, dest_path) == 0)
+        memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
+    else if (strcmp(origin_path, "/") == 0 && strcmp(origin_path, dest_path) != 0)
+        memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
+    else if (strcmp(origin_path, "/") == 0 && strcmp(origin_path, dest_path) == 0)
+        memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
+
+    return 0;
 }
 
 /******************************************************************************
