@@ -454,7 +454,13 @@ int sad_rename(const char *path, const char *newpath) {
 
     update_entry(actual_dir_src, actual_dir_entry_src, &entry_src, &info_sd, entry_src.name, entry_src.uid, entry_src.gid, EMPTY_TYPE);
 
-    if ((strcmp(dest_path, "/") == 0) || (strcmp(origin_path, "/") == 0))
+    if (strcmp(dest_path, "/") == 0 && strcmp(origin_path, dest_path) != 0)
+        memcpy(root_entry, actual_dir_entry_dest, SECTOR_SIZE);
+    else if (strcmp(dest_path, "/") == 0 && strcmp(origin_path, dest_path) == 0)
+        memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
+    else if (strcmp(origin_path, "/") == 0 && strcmp(origin_path, dest_path) != 0)
+        memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
+    else if (strcmp(origin_path, "/") == 0 && strcmp(origin_path, dest_path) == 0)
         memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
 
     return 0;
