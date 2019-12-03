@@ -523,6 +523,8 @@ int sad_truncate(const char *path, off_t newsize) {
 
     delete_path(bars, number_of_bars);
     free(actual_dir_entry);
+
+    return 0;
 }
 
 /******************************************************************************
