@@ -560,6 +560,10 @@ int sad_truncate(const char *path, off_t newsize) {
     dir_entry_t *actual_dir;
     find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
+    dir_entry_t file;
+    search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1], &file);
+    resize_file(fat, &info_sd, actual_dir, actual_dir_entry, &file, newsize);
+
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 
