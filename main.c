@@ -315,8 +315,8 @@ static int sad_read(const char *path, char *buffer, size_t size, off_t offset,
 	find_dir_entrys(bars, number_of_bars - 1, &actual_dir_entry);
 
 	dir_entry_t file;
-//	int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
-//										&file);
+	search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
+										&file);
 
 	int total = read_file(fat, &info_sd, &file, offset, buffer, size);
 
@@ -413,8 +413,8 @@ int sad_unlink(const char *path) {
 	find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
 	dir_entry_t file;
-//	int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
-//										&file);
+	search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
+										&file);
 
 	delete_file(fat, &info_sd, actual_dir, actual_dir_entry, &file);
 
@@ -611,8 +611,8 @@ int sad_write(const char *path, const char *buffer, size_t size, off_t offset,
 	find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
 	dir_entry_t file;
-//	int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
-//										&file);
+	search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
+										&file);
 
 	int total = write_file(fat, &info_sd, actual_dir, actual_dir_entry, &file, offset,
 						   buffer, size);

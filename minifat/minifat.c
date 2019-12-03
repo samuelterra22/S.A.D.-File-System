@@ -744,4 +744,121 @@ int update_entry(dir_entry_t *father_dir, dir_entry_t *dir_entry_list, dir_entry
 	return 1;
 }
 
+/**
+ *
+ * @param fat
+ * @param info
+ * @param dir
+ * @param dir_entry_list
+ * @param file
+ * @param new_size
+ * @return
+ */
+int
+resize_file(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *dir, dir_entry_t *dir_entry_list, dir_entry_t *file,
+            int new_size) {
+    int size_count = new_size - (int) file->size;
+
+    if (size_count > 0) {
+
+        int sector_to_begin_write = file->first_block;
+        int remain_last_sector = file->size;
+        while (remain_last_sector > SECTOR_SIZE + 1) {
+            sector_to_begin_write = fat[sector_to_begin_write - 1];
+            remain_last_sector -= SECTOR_SIZE;
+        }
+
+        size_count -= remain_last_sector;
+
+        while(size_count > 0) {
+            int new_fat_input = get_first_empty_fat_entry(fat, info->available_blocks) + 1;
+
+            fat[sector_to_begin_write - 1] = new_fat_input;
+            fat[new_fat_input - 1] = ENDOFCHAIN;
+
+            sector_to_begin_write = new_fat_input;
+            write_fat_table(fat, info->sector_per_fat);
+
+            size_count -= SECTOR_SIZE;
+        }
+
+        // update file in dir entry
+        time_t now;
+        struct tm *time_info;
+        time(&now);
+        time_info = localtime(&now);
+
+        // update file size and update time
+        file->size = new_size;
+        tm_to_date(time_info, &file->update);
+        int file_index = search_file_index_in_dir(dir_entry_list, file->name);
+        memcpy(&dir_entry_list[file_index], file, sizeof(dir_entry_t));
+
+        // update dir entry list
+        uint32_t sector_to_write;
+        if (dir == NULL)
+            sector_to_write = info->sector_per_fat + 1;
+        else
+            sector_to_write = info->sector_per_fat + 1 + dir->first_block;
+        write_sector(sector_to_write, dir_entry_list);
+
+        return 1;
+    } else if (size_count < 0) {
+        size_count = abs(size_count);
+
+        int number_of_blocks_used = (int) ceil((double) (file->size) / SECTOR_SIZE);
+        int* blocks_used = (int*) malloc(sizeof(int) * number_of_blocks_used);
+
+        int sector_to_begin_write = file->first_block;
+        int remain_last_sector = file->size;
+        int index_to_search = 0;
+        while (remain_last_sector > SECTOR_SIZE + 1) {
+            blocks_used[index_to_search++] = sector_to_begin_write;
+            sector_to_begin_write = fat[sector_to_begin_write - 1];
+            remain_last_sector -= SECTOR_SIZE;
+        }
+        int used_in_last_block = SECTOR_SIZE - remain_last_sector;
+
+        do {
+            if (size_count < used_in_last_block) break;
+
+            int sector_to_remove;
+
+            while(size_count > SECTOR_SIZE) {
+                sector_to_remove = blocks_used[--index_to_search];
+                fat[sector_to_remove-1] = UNUSED;
+                size_count -= SECTOR_SIZE;
+            }
+            sector_to_remove = blocks_used[index_to_search];
+            fat[sector_to_remove - 1] = ENDOFCHAIN;
+
+            write_fat_table(fat, info->sector_per_fat);
+        } while (0);
+
+        time_t now;
+        struct tm *time_info;
+        time(&now);
+        time_info = localtime(&now);
+
+        // update file size and update time
+        file->size = new_size;
+        tm_to_date(time_info, &file->update);
+        int file_index = search_file_index_in_dir(dir_entry_list, file->name);
+        memcpy(&dir_entry_list[file_index], file, sizeof(dir_entry_t));
+
+        // update dir entry list
+        uint32_t sector_to_write;
+        if (dir == NULL)
+            sector_to_write = info->sector_per_fat + 1;
+        else
+            sector_to_write = info->sector_per_fat + 1 + dir->first_block;
+        write_sector(sector_to_write, dir_entry_list);
+        free(blocks_used);
+
+        return 1;
+    }
+
+    return 0;
+}
+
 #pragma clang diagnostic pop
