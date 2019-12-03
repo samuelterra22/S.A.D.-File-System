@@ -120,4 +120,8 @@ int update_entry(dir_entry_t *father_dir, dir_entry_t *dir_entry_list,
 				 dir_entry_t *entry, const info_entry_t *info,
 				 char *name, uid_t uid, gid_t gid, mode_t mode);
 
+int
+resize_file(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *dir, dir_entry_t *dir_entry_list, dir_entry_t *file,
+            int new_size);
+
 #endif //MINI_FAT_MINIFAT_H
