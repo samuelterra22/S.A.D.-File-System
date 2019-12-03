@@ -28,30 +28,20 @@ info_entry_t info_sd;
 fat_entry_t *fat;
 dir_entry_t *root_entry;
 
-/*
-void print_entry(dir_entry_t *entry) {
-	for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
-		if (entry[i].mode == EMPTY_TYPE) fprintf(stderr, "emtpy ");
-		else
-			fprintf(stderr, "%s ", entry[i].name);
-	}
-}
-*/
-
 /**
  *
  * @param string
  * @return
  */
 int num_of_bars(const char *string) {
-	int empty_spaces = 0;
+    int empty_spaces = 0;
 
-	/* search empty spaces */
-	for (unsigned long i = 0; i < strlen(string); ++i)
-		if (string[i] == '/')
-			empty_spaces++;
+    /* search empty spaces */
+    for (unsigned long i = 0; i < strlen(string); ++i)
+        if (string[i] == '/')
+            empty_spaces++;
 
-	return empty_spaces;
+    return empty_spaces;
 }
 
 /**
@@ -60,28 +50,28 @@ int num_of_bars(const char *string) {
  * @return
  */
 char **explode_path(const char *string) {
-	const char s[2] = "/";
-	char *token;
-	int i = 0;
-	char str[MAXPATHLENGTH];
-	strncpy(str, string, MAXPATHLENGTH);
+    const char s[2] = "/";
+    char *token;
+    int i = 0;
+    char str[MAXPATHLENGTH];
+    strncpy(str, string, MAXPATHLENGTH);
 
-	int bars = num_of_bars(str);
+    int bars = num_of_bars(str);
 
-	/* alloc memory for array arguments */
-	char **ret = malloc(sizeof(char *) * bars);
+    /* alloc memory for array arguments */
+    char **ret = malloc(sizeof(char *) * bars);
 
-	/* get the first token */
-	token = strtok(str, "/");
+    /* get the first token */
+    token = strtok(str, "/");
 
-	while (token != NULL) {
-		ret[i] = malloc(sizeof(char) * strlen(token));
-		strcpy(ret[i], token);
-		token = strtok(NULL, s);
-		i++;
-	}
+    while (token != NULL) {
+        ret[i] = malloc(sizeof(char) * strlen(token));
+        strcpy(ret[i], token);
+        token = strtok(NULL, s);
+        i++;
+    }
 
-	return ret;
+    return ret;
 }
 
 /**
@@ -90,9 +80,9 @@ char **explode_path(const char *string) {
  * @param size
  */
 void delete_path(char **path, int size) {
-	for (int i = 0; i < size; i++)
-		free(path[i]);
-	free(path);
+    for (int i = 0; i < size; i++)
+        free(path[i]);
+    free(path);
 }
 
 /**
@@ -103,24 +93,23 @@ void delete_path(char **path, int size) {
  * @param actual_dir
  */
 void find_dir_and_entrys(char **bars, int num_of_bars, dir_entry_t **actual_dir_entry,
-						 dir_entry_t **actual_dir) {
-	*actual_dir_entry = malloc(SECTOR_SIZE);
-	memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
-	*actual_dir = NULL;
-	dir_descriptor_t descriptor;
-	int has_malloc = 0;
+                         dir_entry_t **actual_dir) {
+    *actual_dir_entry = malloc(SECTOR_SIZE);
+    memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
+    *actual_dir = NULL;
+    dir_descriptor_t descriptor;
+    int has_malloc = 0;
 
-	for (int i = 0; i < num_of_bars; i++) {
-		search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
-		memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+    for (int i = 0; i < num_of_bars; i++) {
+        search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
+        memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
 
-		if (has_malloc == 0) {
-			*actual_dir = malloc(sizeof(dir_entry_t));
-			has_malloc = 1;
-		}
-		// *actual_dir = &descriptor.dir_infos;
-		memcpy(*actual_dir, &descriptor.dir_infos, sizeof(dir_entry_t));
-	}
+        if (has_malloc == 0) {
+            *actual_dir = malloc(sizeof(dir_entry_t));
+            has_malloc = 1;
+        }
+        memcpy(*actual_dir, &descriptor.dir_infos, sizeof(dir_entry_t));
+    }
 }
 
 /**
@@ -130,14 +119,14 @@ void find_dir_and_entrys(char **bars, int num_of_bars, dir_entry_t **actual_dir_
  * @param actual_dir_entry
  */
 void find_dir_entrys(char **bars, int num_of_bars, dir_entry_t **actual_dir_entry) {
-	*actual_dir_entry = malloc(SECTOR_SIZE);
-	memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
-	dir_descriptor_t descriptor;
+    *actual_dir_entry = malloc(SECTOR_SIZE);
+    memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
+    dir_descriptor_t descriptor;
 
-	for (int i = 0; i < num_of_bars; i++) {
-		search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
-		memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
-	}
+    for (int i = 0; i < num_of_bars; i++) {
+        search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
+        memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+    }
 }
 
 /**
@@ -147,13 +136,13 @@ void find_dir_entrys(char **bars, int num_of_bars, dir_entry_t **actual_dir_entr
  * @param str
  */
 void get_path_without_dest(char **bars, int num_bars, char *str) {
-	memset(str, 0, MAXPATHLENGTH);
-	strcat(str, "/");
+    memset(str, 0, MAXPATHLENGTH);
+    strcat(str, "/");
 
-	for (int i = 0; i < num_bars - 1; i++) {
-		strcat(str, bars[i]);
-		strcat(str, "/");
-	}
+    for (int i = 0; i < num_bars - 1; i++) {
+        strcat(str, bars[i]);
+        strcat(str, "/");
+    }
 }
 
 /**
@@ -162,20 +151,20 @@ void get_path_without_dest(char **bars, int num_bars, char *str) {
  * @return
  */
 time_t date_to_time(date_t *date) {
-	time_t raw_time;
-	struct tm *time_info;
+    time_t raw_time;
+    struct tm *time_info;
 
-	time(&raw_time);
-	time_info = localtime(&raw_time);
+    time(&raw_time);
+    time_info = localtime(&raw_time);
 
-	time_info->tm_sec = (int) date->seconds;
-	time_info->tm_min = (int) date->minutes;
-	time_info->tm_hour = (int) date->hour;
-	time_info->tm_mday = (int) date->day;
-	time_info->tm_mon = (int) date->month;
-	time_info->tm_year = (int) date->year - 1900;
+    time_info->tm_sec = (int) date->seconds;
+    time_info->tm_min = (int) date->minutes;
+    time_info->tm_hour = (int) date->hour;
+    time_info->tm_mday = (int) date->day;
+    time_info->tm_mon = (int) date->month;
+    time_info->tm_year = (int) date->year - 1900;
 
-	return mktime(time_info);
+    return mktime(time_info);
 }
 
 /******************************************************************************
@@ -190,57 +179,57 @@ time_t date_to_time(date_t *date) {
  * NULL if the file is open.
  *****************************************************************************/
 static int sad_getattr(const char *path, struct stat *st) {
-	if (strcmp(path, "/") == 0) {
-		st->st_uid = getuid();
-		st->st_gid = getgid();
-		st->st_atime = time(NULL);
-		st->st_mtime = time(NULL);
-		st->st_mode = S_IFDIR | 0755;
-		st->st_nlink = 2;
+    if (strcmp(path, "/") == 0) {
+        st->st_uid = getuid();
+        st->st_gid = getgid();
+        st->st_atime = time(NULL);
+        st->st_mtime = time(NULL);
+        st->st_mode = S_IFDIR | 0755;
+        st->st_nlink = 2;
 
-		return 0;
-	}
+        return 0;
+    }
 
-	int number_of_bars = num_of_bars(path);
-	char **bars = explode_path(path);
+    int number_of_bars = num_of_bars(path);
+    char **bars = explode_path(path);
 
-	dir_entry_t *actual_dir;
-	find_dir_entrys(bars, number_of_bars - 1, &actual_dir);
+    dir_entry_t *actual_dir;
+    find_dir_entrys(bars, number_of_bars - 1, &actual_dir);
 
-	dir_descriptor_t dir_descriptor;
-	dir_entry_t file;
+    dir_descriptor_t dir_descriptor;
+    dir_entry_t file;
 
-	int dir_exist;
-	int file_exist;
+    int dir_exist;
+    int file_exist;
 
-	dir_exist = search_dir_entry(actual_dir, &info_sd, bars[number_of_bars - 1],
-								 &dir_descriptor);
-	file_exist = search_file_in_dir(actual_dir, bars[number_of_bars - 1], &file);
+    dir_exist = search_dir_entry(actual_dir, &info_sd, bars[number_of_bars - 1],
+                                 &dir_descriptor);
+    file_exist = search_file_in_dir(actual_dir, bars[number_of_bars - 1], &file);
 
-	if (dir_exist == 1) {
-		st->st_uid = dir_descriptor.dir_infos.uid;
-		st->st_gid = dir_descriptor.dir_infos.gid;
-		st->st_ctime = date_to_time(&dir_descriptor.dir_infos.create);
-		st->st_atime = time(NULL);
-		st->st_mtime = date_to_time(&dir_descriptor.dir_infos.update);
-		st->st_mode = dir_descriptor.dir_infos.mode;
-		st->st_nlink = 2;
-	} else if (file_exist == 1) {
-		st->st_uid = file.uid;
-		st->st_gid = file.gid;
-		st->st_ctime = date_to_time(&file.create);
-		st->st_atime = time(NULL);
-		st->st_mtime = date_to_time(&file.update);
-		st->st_mode = file.mode;
-		st->st_nlink = 1;
-		st->st_size = file.size;
-	} else {
-		return -ENOENT;
-	}
+    if (dir_exist == 1) {
+        st->st_uid = dir_descriptor.dir_infos.uid;
+        st->st_gid = dir_descriptor.dir_infos.gid;
+        st->st_ctime = date_to_time(&dir_descriptor.dir_infos.create);
+        st->st_atime = time(NULL);
+        st->st_mtime = date_to_time(&dir_descriptor.dir_infos.update);
+        st->st_mode = dir_descriptor.dir_infos.mode;
+        st->st_nlink = 2;
+    } else if (file_exist == 1) {
+        st->st_uid = file.uid;
+        st->st_gid = file.gid;
+        st->st_ctime = date_to_time(&file.create);
+        st->st_atime = time(NULL);
+        st->st_mtime = date_to_time(&file.update);
+        st->st_mode = file.mode;
+        st->st_nlink = 1;
+        st->st_size = file.size;
+    } else {
+        return -ENOENT;
+    }
 
-	free(actual_dir);
-	delete_path(bars, number_of_bars);
-	return 0;
+    free(actual_dir);
+    delete_path(bars, number_of_bars);
+    return 0;
 }
 
 /******************************************************************************
@@ -259,33 +248,33 @@ static int sad_getattr(const char *path, struct stat *st) {
  * filler function will return '1'.
  *****************************************************************************/
 static int sad_readdir(const char *path, void *buffer, fuse_fill_dir_t filler,
-					   off_t offset, struct fuse_file_info *fi) {
-	filler(buffer, ".", NULL, 0); /* Current Directory */
-	filler(buffer, "..", NULL, 0); /* Parent Directory */
-	if (strcmp("/", path) == 0) {
-		for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
-			if (root_entry[i].mode != EMPTY_TYPE) {
-				filler(buffer, root_entry[i].name, NULL, 0);
-			}
-		}
-		return 0;
-	}
+                       off_t offset, struct fuse_file_info *fi) {
+    filler(buffer, ".", NULL, 0); /* Current Directory */
+    filler(buffer, "..", NULL, 0); /* Parent Directory */
+    if (strcmp("/", path) == 0) {
+        for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
+            if (root_entry[i].mode != EMPTY_TYPE) {
+                filler(buffer, root_entry[i].name, NULL, 0);
+            }
+        }
+        return 0;
+    }
 
-	int number_of_bars = num_of_bars(path);
-	char **bars = explode_path(path);
+    int number_of_bars = num_of_bars(path);
+    char **bars = explode_path(path);
 
-	dir_entry_t *actual_dir_entry;
-	find_dir_entrys(bars, number_of_bars, &actual_dir_entry);
+    dir_entry_t *actual_dir_entry;
+    find_dir_entrys(bars, number_of_bars, &actual_dir_entry);
 
-	for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
-		if (actual_dir_entry[i].mode != EMPTY_TYPE) {
-			filler(buffer, actual_dir_entry[i].name, NULL, 0);
-		}
-	}
+    for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
+        if (actual_dir_entry[i].mode != EMPTY_TYPE) {
+            filler(buffer, actual_dir_entry[i].name, NULL, 0);
+        }
+    }
 
-	free(actual_dir_entry);
-	delete_path(bars, number_of_bars);
-	return 0;
+    free(actual_dir_entry);
+    delete_path(bars, number_of_bars);
+    return 0;
 }
 
 /******************************************************************************
@@ -294,7 +283,7 @@ static int sad_readdir(const char *path, void *buffer, fuse_fill_dir_t filler,
  * Open flags are available in fi->flags. The following rules apply.
  *****************************************************************************/
 static int sad_open(const char *path, struct fuse_file_info *fi) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
@@ -307,22 +296,22 @@ static int sad_open(const char *path, struct fuse_file_info *fi) {
  * value of this operation.
  *****************************************************************************/
 static int sad_read(const char *path, char *buffer, size_t size, off_t offset,
-					struct fuse_file_info *fi) {
-	int number_of_bars = num_of_bars(path);
-	char **bars = explode_path(path);
+                    struct fuse_file_info *fi) {
+    int number_of_bars = num_of_bars(path);
+    char **bars = explode_path(path);
 
-	dir_entry_t *actual_dir_entry;
-	find_dir_entrys(bars, number_of_bars - 1, &actual_dir_entry);
+    dir_entry_t *actual_dir_entry;
+    find_dir_entrys(bars, number_of_bars - 1, &actual_dir_entry);
 
-	dir_entry_t file;
-	search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
-										&file);
+    dir_entry_t file;
+    search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
+                       &file);
 
-	int total = read_file(fat, &info_sd, &file, offset, buffer, size);
+    int total = read_file(fat, &info_sd, &file, offset, buffer, size);
 
-	free(actual_dir_entry);
-	delete_path(bars, number_of_bars);
-	return total;
+    free(actual_dir_entry);
+    delete_path(bars, number_of_bars);
+    return total;
 }
 
 /******************************************************************************
@@ -334,7 +323,7 @@ static int sad_read(const char *path, char *buffer, size_t size, off_t offset,
  * return value should be 0 for success.
  *****************************************************************************/
 int sad_readlink(const char *path, char *link, size_t size) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
@@ -345,28 +334,28 @@ int sad_readlink(const char *path, char *link, size_t size) {
  * called instead.
  *****************************************************************************/
 int sad_mknod(const char *path, mode_t mode, dev_t dev) {
-	int number_of_bars = num_of_bars(path);
-	char **bars = explode_path(path);
+    int number_of_bars = num_of_bars(path);
+    char **bars = explode_path(path);
 
-	dir_entry_t *actual_dir_entry;
-	dir_entry_t *actual_dir;
-	find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+    dir_entry_t *actual_dir_entry;
+    dir_entry_t *actual_dir;
+    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
-	char name[MAXNAME];
-	memset(name, 0, MAXNAME);
-	strcpy(name, bars[number_of_bars - 1]);
+    char name[MAXNAME];
+    memset(name, 0, MAXNAME);
+    strcpy(name, bars[number_of_bars - 1]);
 
-	struct fuse_context *context = fuse_get_context();
-	create_empty_file(actual_dir, actual_dir_entry, &info_sd, fat, name, mode,
-					  context->uid, context->gid);
+    struct fuse_context *context = fuse_get_context();
+    create_empty_file(actual_dir, actual_dir_entry, &info_sd, fat, name, mode,
+                      context->uid, context->gid);
 
-	if (actual_dir == NULL)
-		memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+    if (actual_dir == NULL)
+        memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 
-	free(actual_dir_entry);
-	delete_path(bars, number_of_bars);
+    free(actual_dir_entry);
+    delete_path(bars, number_of_bars);
 
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
@@ -377,87 +366,87 @@ int sad_mknod(const char *path, mode_t mode, dev_t dev) {
  * use mode|S_IFDIR
  *****************************************************************************/
 int sad_mkdir(const char *path, mode_t mode) {
-	int number_of_bars = num_of_bars(path);
-	char **bars = explode_path(path);
+    int number_of_bars = num_of_bars(path);
+    char **bars = explode_path(path);
 
-	dir_entry_t *actual_dir_entry;
-	dir_entry_t *actual_dir;
-	find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+    dir_entry_t *actual_dir_entry;
+    dir_entry_t *actual_dir;
+    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
-	char name[MAXNAME];
-	memset(name, 0, MAXNAME);
-	strcpy(name, bars[number_of_bars - 1]);
+    char name[MAXNAME];
+    memset(name, 0, MAXNAME);
+    strcpy(name, bars[number_of_bars - 1]);
 
-	struct fuse_context *context = fuse_get_context();
-	create_empty_dir(actual_dir, actual_dir_entry, &info_sd, fat, name, mode | S_IFDIR,
-					 context->uid, context->gid);
+    struct fuse_context *context = fuse_get_context();
+    create_empty_dir(actual_dir, actual_dir_entry, &info_sd, fat, name, mode | S_IFDIR,
+                     context->uid, context->gid);
 
-	if (actual_dir == NULL)
-		memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+    if (actual_dir == NULL)
+        memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 
-	delete_path(bars, number_of_bars);
-	free(actual_dir_entry);
+    delete_path(bars, number_of_bars);
+    free(actual_dir_entry);
 
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
  * Remove a file
  *****************************************************************************/
 int sad_unlink(const char *path) {
-	int number_of_bars = num_of_bars(path);
-	char **bars = explode_path(path);
+    int number_of_bars = num_of_bars(path);
+    char **bars = explode_path(path);
 
-	dir_entry_t *actual_dir_entry;
-	dir_entry_t *actual_dir;
-	find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+    dir_entry_t *actual_dir_entry;
+    dir_entry_t *actual_dir;
+    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
-	dir_entry_t file;
-	search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
-										&file);
+    dir_entry_t file;
+    search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
+                       &file);
 
-	delete_file(fat, &info_sd, actual_dir, actual_dir_entry, &file);
+    delete_file(fat, &info_sd, actual_dir, actual_dir_entry, &file);
 
-	if (actual_dir == NULL)
-		memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+    if (actual_dir == NULL)
+        memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 
-	delete_path(bars, number_of_bars);
-	free(actual_dir_entry);
+    delete_path(bars, number_of_bars);
+    free(actual_dir_entry);
 
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
  * Remove a directory
  *****************************************************************************/
 int sad_rmdir(const char *path) {
-	int number_of_bars = num_of_bars(path);
-	char **bars = explode_path(path);
+    int number_of_bars = num_of_bars(path);
+    char **bars = explode_path(path);
 
-	dir_entry_t *actual_dir_entry;
-	dir_entry_t *actual_dir;
-	find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+    dir_entry_t *actual_dir_entry;
+    dir_entry_t *actual_dir;
+    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
-	dir_descriptor_t dirDescriptor;
-	search_dir_entry(actual_dir_entry, &info_sd, bars[number_of_bars - 1],
-					 &dirDescriptor);
+    dir_descriptor_t dirDescriptor;
+    search_dir_entry(actual_dir_entry, &info_sd, bars[number_of_bars - 1],
+                     &dirDescriptor);
 
-	delete_dir(fat, &info_sd, actual_dir, actual_dir_entry, &dirDescriptor.dir_infos);
+    delete_dir(fat, &info_sd, actual_dir, actual_dir_entry, &dirDescriptor.dir_infos);
 
-	if (actual_dir == NULL)
-		memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+    if (actual_dir == NULL)
+        memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 
-	delete_path(bars, number_of_bars);
-	free(actual_dir_entry);
+    delete_path(bars, number_of_bars);
+    free(actual_dir_entry);
 
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
  * Create a symbolic link
  *****************************************************************************/
 int sad_symlink(const char *path, const char *link) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
@@ -470,65 +459,65 @@ int sad_symlink(const char *path, const char *link) {
  * deleted.
  *****************************************************************************/
 int sad_rename(const char *path, const char *newpath) {
-	int number_of_bars_src = num_of_bars(path);
-	char **bars_src = explode_path(path);
+    int number_of_bars_src = num_of_bars(path);
+    char **bars_src = explode_path(path);
 
-	int number_of_bars_dest = num_of_bars(newpath);
-	char **bars_dest = explode_path(newpath);
+    int number_of_bars_dest = num_of_bars(newpath);
+    char **bars_dest = explode_path(newpath);
 
-	dir_entry_t *actual_dir_entry_src;
-	dir_entry_t *actual_dir_src;
-	find_dir_and_entrys(bars_src, number_of_bars_src - 1, &actual_dir_entry_src,
-						&actual_dir_src);
+    dir_entry_t *actual_dir_entry_src;
+    dir_entry_t *actual_dir_src;
+    find_dir_and_entrys(bars_src, number_of_bars_src - 1, &actual_dir_entry_src,
+                        &actual_dir_src);
 
-	dir_entry_t *actual_dir_entry_dest;
-	dir_entry_t *actual_dir_dest;
-	find_dir_and_entrys(bars_dest, number_of_bars_dest - 1, &actual_dir_entry_dest,
-						&actual_dir_dest);
+    dir_entry_t *actual_dir_entry_dest;
+    dir_entry_t *actual_dir_dest;
+    find_dir_and_entrys(bars_dest, number_of_bars_dest - 1, &actual_dir_entry_dest,
+                        &actual_dir_dest);
 
-	dir_entry_t entry_src;
-	search_entry_in_dir(actual_dir_entry_src, bars_src[number_of_bars_src - 1],
-						&entry_src);
+    dir_entry_t entry_src;
+    search_entry_in_dir(actual_dir_entry_src, bars_src[number_of_bars_src - 1],
+                        &entry_src);
 
-	dir_entry_t entry_dest;
-	memcpy(&entry_dest, &entry_src, sizeof(dir_entry_t));
+    dir_entry_t entry_dest;
+    memcpy(&entry_dest, &entry_src, sizeof(dir_entry_t));
 
-	strcpy(entry_dest.name, bars_dest[number_of_bars_dest - 1]);
-	add_entry_in_dir_entry(actual_dir_dest, actual_dir_entry_dest, &entry_dest, &info_sd);
+    strcpy(entry_dest.name, bars_dest[number_of_bars_dest - 1]);
+    add_entry_in_dir_entry(actual_dir_dest, actual_dir_entry_dest, &entry_dest, &info_sd);
 
-	char origin_path[MAXPATHLENGTH];
-	char dest_path[MAXPATHLENGTH];
+    char origin_path[MAXPATHLENGTH];
+    char dest_path[MAXPATHLENGTH];
 
-	get_path_without_dest(bars_src, number_of_bars_src, origin_path);
-	get_path_without_dest(bars_dest, number_of_bars_dest, dest_path);
+    get_path_without_dest(bars_src, number_of_bars_src, origin_path);
+    get_path_without_dest(bars_dest, number_of_bars_dest, dest_path);
 
-	fprintf(stderr, "scr: %s\n", origin_path);
-	fprintf(stderr, "dest: %s\n", dest_path);
+    fprintf(stderr, "scr: %s\n", origin_path);
+    fprintf(stderr, "dest: %s\n", dest_path);
 
-	if (strcmp(origin_path, dest_path) == 0) {
-		memcpy(actual_dir_entry_src, actual_dir_entry_dest, SECTOR_SIZE);
-	}
+    if (strcmp(origin_path, dest_path) == 0) {
+        memcpy(actual_dir_entry_src, actual_dir_entry_dest, SECTOR_SIZE);
+    }
 
-	update_entry(actual_dir_src, actual_dir_entry_src, &entry_src, &info_sd,
-				 entry_src.name, entry_src.uid, entry_src.gid, EMPTY_TYPE);
+    update_entry(actual_dir_src, actual_dir_entry_src, &entry_src, &info_sd,
+                 entry_src.name, entry_src.uid, entry_src.gid, EMPTY_TYPE);
 
-	if (strcmp(dest_path, "/") == 0 && strcmp(origin_path, dest_path) != 0)
-		memcpy(root_entry, actual_dir_entry_dest, SECTOR_SIZE);
-	else if (strcmp(dest_path, "/") == 0 && strcmp(origin_path, dest_path) == 0)
-		memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
-	else if (strcmp(origin_path, "/") == 0 && strcmp(origin_path, dest_path) != 0)
-		memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
-	else if (strcmp(origin_path, "/") == 0 && strcmp(origin_path, dest_path) == 0)
-		memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
+    if (strcmp(dest_path, "/") == 0 && strcmp(origin_path, dest_path) != 0)
+        memcpy(root_entry, actual_dir_entry_dest, SECTOR_SIZE);
+    else if (strcmp(dest_path, "/") == 0 && strcmp(origin_path, dest_path) == 0)
+        memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
+    else if (strcmp(origin_path, "/") == 0 && strcmp(origin_path, dest_path) != 0)
+        memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
+    else if (strcmp(origin_path, "/") == 0 && strcmp(origin_path, dest_path) == 0)
+        memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
 
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
  * Create a hard link to a file
  *****************************************************************************/
 int sad_link(const char *path, const char *newpath) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
@@ -538,7 +527,7 @@ int sad_link(const char *path, const char *newpath) {
  * NULL if the file is open.
  *****************************************************************************/
 int sad_chmod(const char *path, mode_t mode) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
@@ -551,7 +540,7 @@ int sad_chmod(const char *path, mode_t mode) {
  * the setuid and setgid bits.
  *****************************************************************************/
 int sad_chown(const char *path, uid_t uid, gid_t gid) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
@@ -569,12 +558,7 @@ int sad_truncate(const char *path, off_t newsize) {
 
     dir_entry_t *actual_dir_entry;
     dir_entry_t *actual_dir;
-    find_dir_and_entrys(bars, number_of_bars -1, &actual_dir_entry, &actual_dir);
-
-    dir_entry_t file;
-    int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1], &file);
-
-    int total = resize_file(fat, &info_sd, actual_dir, actual_dir_entry, &file, newsize);
+    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
@@ -589,7 +573,7 @@ int sad_truncate(const char *path, off_t newsize) {
  * Change file last access and modification times
  *****************************************************************************/
 int sad_utime(const char *path, struct utimbuf *ubuf) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
@@ -602,27 +586,27 @@ int sad_utime(const char *path, struct utimbuf *ubuf) {
  * the setuid and setgid bits.
  *****************************************************************************/
 int sad_write(const char *path, const char *buffer, size_t size, off_t offset,
-			  struct fuse_file_info *fi) {
-	int number_of_bars = num_of_bars(path);
-	char **bars = explode_path(path);
+              struct fuse_file_info *fi) {
+    int number_of_bars = num_of_bars(path);
+    char **bars = explode_path(path);
 
-	dir_entry_t *actual_dir_entry;
-	dir_entry_t *actual_dir;
-	find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+    dir_entry_t *actual_dir_entry;
+    dir_entry_t *actual_dir;
+    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
-	dir_entry_t file;
-	search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
-										&file);
+    dir_entry_t file;
+    search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
+                       &file);
 
-	int total = write_file(fat, &info_sd, actual_dir, actual_dir_entry, &file, offset,
-						   buffer, size);
+    int total = write_file(fat, &info_sd, actual_dir, actual_dir_entry, &file, offset,
+                           buffer, size);
 
-	if (actual_dir == NULL)
-		memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+    if (actual_dir == NULL)
+        memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 
-	delete_path(bars, number_of_bars);
-	free(actual_dir_entry);
-	return total;
+    delete_path(bars, number_of_bars);
+    free(actual_dir_entry);
+    return total;
 }
 
 /******************************************************************************
@@ -631,7 +615,7 @@ int sad_write(const char *path, const char *buffer, size_t size, off_t offset,
  * The 'f_favail', 'f_fsid' and 'f_flag' fields are ignored
  *****************************************************************************/
 int sad_statfs(const char *path, struct statvfs *statv) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
@@ -658,7 +642,7 @@ int sad_statfs(const char *path, struct statvfs *statv) {
  * point. It may be called more times than expected, or not at all.
  ******************************************************************************/
 int sad_flush(const char *path, struct fuse_file_info *fi) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
@@ -673,7 +657,7 @@ int sad_flush(const char *path, struct fuse_file_info *fi) {
  * happen on the file. The return value of release is ignored.
  ******************************************************************************/
 int sad_release(const char *path, struct fuse_file_info *fi) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
@@ -683,7 +667,7 @@ int sad_release(const char *path, struct fuse_file_info *fi) {
  * flushed, not the meta data.
  ******************************************************************************/
 int sad_fsync(const char *path, int datasync, struct fuse_file_info *fi) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
@@ -695,14 +679,14 @@ int sad_fsync(const char *path, int datasync, struct fuse_file_info *fi) {
  * passed to readdir, releasedir and fsyncdir.
  ******************************************************************************/
 int sad_opendir(const char *path, struct fuse_file_info *fi) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
  * Release directory
  *****************************************************************************/
 int sad_releasedir(const char *path, struct fuse_file_info *fi) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
@@ -712,7 +696,7 @@ int sad_releasedir(const char *path, struct fuse_file_info *fi) {
  * flushed, not the meta data
  *****************************************************************************/
 int sad_fsyncdir(const char *path, int datasync, struct fuse_file_info *fi) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
@@ -723,8 +707,8 @@ int sad_fsyncdir(const char *path, int datasync, struct fuse_file_info *fi) {
  * overrides the initial value provided to fuse_main() / fuse_new().
  *****************************************************************************/
 void *sad_init(struct fuse_conn_info *conn) {
-	fprintf(stderr, "S.A.D. Filesystem successfully initialized.");
-	return 0;
+    fprintf(stderr, "S.A.D. Filesystem successfully initialized.");
+    return 0;
 }
 
 /******************************************************************************
@@ -733,7 +717,7 @@ void *sad_init(struct fuse_conn_info *conn) {
  * Called on filesystem exit.
  *****************************************************************************/
 void sad_destroy(void *userdata) {
-	fprintf(stderr, "S.A.D. Filesystem successfully destroyed.");
+    fprintf(stderr, "S.A.D. Filesystem successfully destroyed.");
 }
 
 /******************************************************************************
@@ -745,21 +729,21 @@ void sad_destroy(void *userdata) {
  * This method is not called under Linux kernel versions 2.4.x
  *****************************************************************************/
 int sad_access(const char *path, int mask) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
  *
  *****************************************************************************/
 int sad_ftruncate(const char *path, off_t offset, struct fuse_file_info *fi) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
  *
  *****************************************************************************/
 int sad_fgetattr(const char *path, struct stat *statbuf, struct fuse_file_info *fi) {
-	return 0;
+    return 0;
 }
 
 /******************************************************************************
@@ -785,68 +769,68 @@ int sad_fgetattr(const char *path, struct stat *statbuf, struct fuse_file_info *
  * Almost all operations take a path which can be of any length.
  *****************************************************************************/
 static struct fuse_operations sad_operations = {
-		.getattr = sad_getattr,
-		.open = sad_open,
-		.read = sad_read,
-		.readdir = sad_readdir,
-		.readlink = sad_readlink,
-		.getdir = NULL, /* .getdir is deprecated */
-		.mknod = sad_mknod,
-		.mkdir = sad_mkdir,
-		.unlink = sad_unlink,
-		.rmdir = sad_rmdir,
-		.symlink = sad_symlink,
-		.rename = sad_rename,
-		.link = sad_link,
-		.chmod = sad_chmod,
-		.chown = sad_chown,
-		.truncate = sad_truncate,
-		.utime = sad_utime,
-		.write = sad_write,
-		.statfs = sad_statfs,
-		.flush = sad_flush,
-		.release = sad_release,
-		.fsync = sad_fsync,
-		.opendir = sad_opendir,
-		.releasedir = sad_releasedir,
-		.fsyncdir = sad_fsyncdir,
-		.init = sad_init,
-		.destroy = sad_destroy,
-		.access = sad_access,
-		.ftruncate = sad_ftruncate,
-		.fgetattr = sad_fgetattr
+        .getattr = sad_getattr,
+        .open = sad_open,
+        .read = sad_read,
+        .readdir = sad_readdir,
+        .readlink = sad_readlink,
+        .getdir = NULL, /* .getdir is deprecated */
+        .mknod = sad_mknod,
+        .mkdir = sad_mkdir,
+        .unlink = sad_unlink,
+        .rmdir = sad_rmdir,
+        .symlink = sad_symlink,
+        .rename = sad_rename,
+        .link = sad_link,
+        .chmod = sad_chmod,
+        .chown = sad_chown,
+        .truncate = sad_truncate,
+        .utime = sad_utime,
+        .write = sad_write,
+        .statfs = sad_statfs,
+        .flush = sad_flush,
+        .release = sad_release,
+        .fsync = sad_fsync,
+        .opendir = sad_opendir,
+        .releasedir = sad_releasedir,
+        .fsyncdir = sad_fsyncdir,
+        .init = sad_init,
+        .destroy = sad_destroy,
+        .access = sad_access,
+        .ftruncate = sad_ftruncate,
+        .fgetattr = sad_fgetattr
 };
 
 /******************************************************************************
  * Main function
  *****************************************************************************/
 int main(int argc, char *argv[]) {
-	int fuse_status;
+    int fuse_status;
 
-	if ((getuid() == 0) || (geteuid() == 0)) {
-		fprintf(stderr, "Running SADFS as root opens unacceptable security holes\n");
-		return EXIT_FAILURE;
-	}
+    if ((getuid() == 0) || (geteuid() == 0)) {
+        fprintf(stderr, "Running SADFS as root opens unacceptable security holes\n");
+        return EXIT_FAILURE;
+    }
 
-	fd = open(virtual_disk, O_RDWR);
+    fd = open(virtual_disk, O_RDWR);
 
-	if (strcmp(argv[1], "-format") == 0) {
-		printf("Formatting disk ..........");
-		format(3862528);
-		printf("   disk successfully formatted\n");
+    if (strcmp(argv[1], "-format") == 0) {
+        printf("Formatting disk ..........");
+        format(3862528);
+        printf("   disk successfully formatted\n");
 
-		return 0;
-	}
+        return EXIT_SUCCESS;
+    }
 
-	init(&info_sd, &fat, &root_entry);
+    init(&info_sd, &fat, &root_entry);
 
-	fprintf(stderr, "Using Fuse library version %d.%d\n", FUSE_MAJOR_VERSION,
-			FUSE_MINOR_VERSION);
-	fuse_status = fuse_main(argc, argv, &sad_operations, NULL);
+    fprintf(stderr, "Using Fuse library version %d.%d\n", FUSE_MAJOR_VERSION,
+            FUSE_MINOR_VERSION);
+    fuse_status = fuse_main(argc, argv, &sad_operations, NULL);
 
-	fprintf(stderr, "fuse_main returned %d\n", fuse_status);
+    fprintf(stderr, "fuse_main returned %d\n", fuse_status);
 
-	return fuse_status;
+    return fuse_status;
 }
 
 #pragma clang diagnostic pop
