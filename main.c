@@ -307,11 +307,11 @@ static int sad_read(const char *path, char *buffer, size_t size, off_t offset,
     search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
                        &file);
 
-    int total = read_file(fat, &info_sd, &file, offset, buffer, size);
+    int total_size = read_file(fat, &info_sd, &file, offset, buffer, size);
 
     free(actual_dir_entry);
     delete_path(bars, number_of_bars);
-    return total;
+    return total_size;
 }
 
 /******************************************************************************
@@ -598,7 +598,7 @@ int sad_write(const char *path, const char *buffer, size_t size, off_t offset,
     search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
                        &file);
 
-    int total = write_file(fat, &info_sd, actual_dir, actual_dir_entry, &file, offset,
+    int total_size = write_file(fat, &info_sd, actual_dir, actual_dir_entry, &file, offset,
                            buffer, size);
 
     if (actual_dir == NULL)
@@ -606,7 +606,7 @@ int sad_write(const char *path, const char *buffer, size_t size, off_t offset,
 
     delete_path(bars, number_of_bars);
     free(actual_dir_entry);
-    return total;
+    return total_size;
 }
 
 /******************************************************************************
