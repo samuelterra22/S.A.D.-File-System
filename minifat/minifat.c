@@ -1,31 +1,24 @@
 #pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
 #pragma clang diagnostic ignored "-Wpointer-arith"
 #pragma ide diagnostic ignored "hicpp-signed-bitwise"
 
 #include "minifat.h"
-#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <time.h>
 #include <sys/stat.h>
 
 int fd;
 
-/*
-void print_disk_info_1(info_entry_t info) {
-	printf("Total blocks: %d\n", info.total_block);
-	printf("Available blocks: %d\n", info.available_blocks);
-	printf("Block size: %d\n", info.block_size);
-	printf("Blocks per sector: %d\n", info.block_per_sector);
-	printf("Sector per fat: %d\n", info.sector_per_fat);
-	printf("Dir entry number: %d\n", info.dir_entry_number);
-}
-*/
-
+/**
+ *
+ * @param tm
+ * @param date
+ */
 void tm_to_date(struct tm *tm, date_t *date) {
 	date->day = tm->tm_mday;
 	date->month = tm->tm_mon;
@@ -35,24 +28,31 @@ void tm_to_date(struct tm *tm, date_t *date) {
 	date->seconds = tm->tm_sec;
 }
 
+/**
+ *
+ * @param block
+ * @param buffer
+ */
 void write_block(uint32_t block, void *buffer) {
-	//int fd = open(virtual_disk, O_RDWR);
-
 	lseek(fd, block * BLOCK_SIZE, SEEK_SET);
 	write(fd, buffer, BLOCK_SIZE);
-
-	//close(fd);
 }
 
+/**
+ *
+ * @param block
+ * @param buffer
+ */
 void read_block(uint32_t block, void *buffer) {
-	//int fd = open(virtual_disk, O_RDWR);
-
 	lseek(fd, block * BLOCK_SIZE, SEEK_SET);
 	read(fd, buffer, BLOCK_SIZE);
-
-	//close(fd);
 }
 
+/**
+ *
+ * @param sector
+ * @param buffer
+ */
 void write_sector(uint32_t sector, void *buffer) {
 	uint32_t first_block = sector * (SECTOR_SIZE / BLOCK_SIZE);
 
@@ -61,6 +61,11 @@ void write_sector(uint32_t sector, void *buffer) {
 	}
 }
 
+/**
+ *
+ * @param sector
+ * @param buffer
+ */
 void read_sector(uint32_t sector, void *buffer) {
 	uint32_t first_block = sector * (SECTOR_SIZE / BLOCK_SIZE);
 
@@ -69,6 +74,11 @@ void read_sector(uint32_t sector, void *buffer) {
 	}
 }
 
+/**
+ *
+ * @param fat
+ * @param size
+ */
 void write_fat_table(void *fat, int size) {
 	char buffer[SECTOR_SIZE];
 
@@ -78,6 +88,11 @@ void write_fat_table(void *fat, int size) {
 	}
 }
 
+/**
+ *
+ * @param size
+ * @return
+ */
 int format(int size) {
 	int blocks_count = size;// /BLOCK_SIZE;
 	int sector_count = blocks_count / (SECTOR_SIZE / BLOCK_SIZE);
@@ -119,6 +134,12 @@ int format(int size) {
 	return 0;
 }
 
+/**
+ *
+ * @param info
+ * @param fat_entry
+ * @param root_dir
+ */
 void init(info_entry_t *info, fat_entry_t **fat_entry, dir_entry_t **root_dir) {
 	char buffer[SECTOR_SIZE];
 
@@ -138,16 +159,12 @@ void init(info_entry_t *info, fat_entry_t **fat_entry, dir_entry_t **root_dir) {
 	read_sector((int) info->sector_per_fat + 1, *root_dir);
 }
 
-/*
-void release(fat_entry_t **fat_entry, dir_entry_t **root_dir) {
-	free(*fat_entry);
-	free(*root_dir);
-
-	*fat_entry = NULL;
-	*root_dir = NULL;
-}
-*/
-
+/**
+ *
+ * @param dir_entry
+ * @param size
+ * @return
+ */
 int get_first_empty_dir_entry(const dir_entry_t *dir_entry, int size) {
 	for (int i = 0; i < size; i++) {
 		if (dir_entry[i].mode == EMPTY_TYPE) return i;
@@ -156,6 +173,12 @@ int get_first_empty_dir_entry(const dir_entry_t *dir_entry, int size) {
 	return -1;
 }
 
+/**
+ *
+ * @param fat
+ * @param size
+ * @return
+ */
 int get_first_empty_fat_entry(const fat_entry_t *fat, int size) {
 	for (int i = 0; i < size; i++) {
 		if (fat[i] == UNUSED) return i;
@@ -164,6 +187,18 @@ int get_first_empty_fat_entry(const fat_entry_t *fat, int size) {
 	return -1;
 }
 
+/**
+ *
+ * @param dir
+ * @param dir_entry_list
+ * @param info
+ * @param fat
+ * @param name
+ * @param mode
+ * @param uid
+ * @param gid
+ * @return
+ */
 int
 create_empty_file(dir_entry_t *dir, dir_entry_t *dir_entry_list, info_entry_t *info, fat_entry_t *fat, const char *name,
 				  mode_t mode, uid_t uid, gid_t gid) {
@@ -203,6 +238,18 @@ create_empty_file(dir_entry_t *dir, dir_entry_t *dir_entry_list, info_entry_t *i
 	return 0;
 }
 
+/**
+ *
+ * @param dir
+ * @param dir_entry_list
+ * @param info
+ * @param fat
+ * @param name
+ * @param mode
+ * @param uid
+ * @param gid
+ * @return
+ */
 int
 create_empty_dir(dir_entry_t *dir, dir_entry_t *dir_entry_list, info_entry_t *info, fat_entry_t *fat, const char *name,
 				 mode_t mode, uid_t uid, gid_t gid) {
@@ -245,6 +292,14 @@ create_empty_dir(dir_entry_t *dir, dir_entry_t *dir_entry_list, info_entry_t *in
 	return 0;
 }
 
+/**
+ *
+ * @param dir_entry
+ * @param info
+ * @param name
+ * @param descriptor
+ * @return
+ */
 int search_dir_entry(dir_entry_t *dir_entry, info_entry_t *info, const char *name, dir_descriptor_t *descriptor) {
 	char buffer[SECTOR_SIZE];
 
@@ -265,6 +320,13 @@ int search_dir_entry(dir_entry_t *dir_entry, info_entry_t *info, const char *nam
 	return -1;
 }
 
+/**
+ *
+ * @param dir_entry
+ * @param name
+ * @param file
+ * @return
+ */
 int search_file_in_dir(dir_entry_t *dir_entry, const char *name, dir_entry_t *file) {
 	for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
 		if (dir_entry[i].mode != EMPTY_TYPE) {
@@ -279,20 +341,33 @@ int search_file_in_dir(dir_entry_t *dir_entry, const char *name, dir_entry_t *fi
 	return -1;
 }
 
+/**
+ *
+ * @param dir_entry
+ * @param name
+ * @param entry
+ * @return
+ */
 int search_entry_in_dir(dir_entry_t *dir_entry, const char *name, dir_entry_t *entry) {
-    for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
-        if (dir_entry[i].mode != EMPTY_TYPE) {
-            if (strcmp(dir_entry[i].name, name) == 0) {
-                memcpy(entry, &dir_entry[i], sizeof(dir_entry_t));
+	for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
+		if (dir_entry[i].mode != EMPTY_TYPE) {
+			if (strcmp(dir_entry[i].name, name) == 0) {
+				memcpy(entry, &dir_entry[i], sizeof(dir_entry_t));
 
-                return 1;
-            }
-        }
-    }
+				return 1;
+			}
+		}
+	}
 
-    return -1;
+	return -1;
 }
 
+/**
+ *
+ * @param dir_entry
+ * @param name
+ * @return
+ */
 int search_file_index_in_dir(dir_entry_t *dir_entry, const char *name) {
 	for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
 		if (dir_entry[i].mode != EMPTY_TYPE) {
@@ -305,6 +380,12 @@ int search_file_index_in_dir(dir_entry_t *dir_entry, const char *name) {
 	return -1;
 }
 
+/**
+ *
+ * @param dir_entry
+ * @param name
+ * @return
+ */
 int search_dir_index_in_dir(dir_entry_t *dir_entry, const char *name) {
 	for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
 		if (dir_entry[i].mode != EMPTY_TYPE) {
@@ -317,6 +398,12 @@ int search_dir_index_in_dir(dir_entry_t *dir_entry, const char *name) {
 	return -1;
 }
 
+/**
+ *
+ * @param fat
+ * @param size
+ * @return
+ */
 int get_empty_fat_entry_number(const fat_entry_t *fat, int size) {
 	int counter = 0;
 	for (int i = 0; i < size; i++) {
@@ -326,6 +413,18 @@ int get_empty_fat_entry_number(const fat_entry_t *fat, int size) {
 	return counter;
 }
 
+/**
+ *
+ * @param fat
+ * @param info
+ * @param dir
+ * @param dir_entry_list
+ * @param file
+ * @param offset
+ * @param buffer
+ * @param size
+ * @return
+ */
 int
 write_file(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *dir, dir_entry_t *dir_entry_list, dir_entry_t *file,
 		   int offset, const char *buffer, int size) {
@@ -342,7 +441,7 @@ write_file(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *dir, dir_ent
 		used_bytes_last_block -= SECTOR_SIZE;
 		number_of_blocks++;
 	}
-//    int empty_bytes_in_last_block = SECTOR_SIZE - used_bytes_last_block;
+	// int empty_bytes_in_last_block = SECTOR_SIZE - used_bytes_last_block;
 	int number_of_blocks_required = (int) ceil((double) (file->size + size) / SECTOR_SIZE);
 
 	// get sector of offset
@@ -433,6 +532,16 @@ write_file(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *dir, dir_ent
 	return size;
 }
 
+/**
+ *
+ * @param fat
+ * @param info
+ * @param file
+ * @param offset
+ * @param buffer
+ * @param size
+ * @return
+ */
 int read_file(const fat_entry_t *fat, const info_entry_t *info, dir_entry_t *file, int offset, char *buffer,
 			  unsigned int size) {
 	if (fat == NULL) return -1;
@@ -497,6 +606,15 @@ int read_file(const fat_entry_t *fat, const info_entry_t *info, dir_entry_t *fil
 	return (int) size;
 }
 
+/**
+ *
+ * @param fat
+ * @param info
+ * @param dir
+ * @param dir_entry_list
+ * @param file
+ * @return
+ */
 int delete_file(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *dir, dir_entry_t *dir_entry_list,
 				dir_entry_t *file) {
 	int file_index = search_file_index_in_dir(dir_entry_list, file->name);
@@ -529,6 +647,15 @@ int delete_file(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *dir, di
 	return 1;
 }
 
+/**
+ *
+ * @param fat
+ * @param info
+ * @param father_dir
+ * @param dir_entry_list
+ * @param dir
+ * @return
+ */
 int delete_dir(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *father_dir, dir_entry_t *dir_entry_list,
 			   dir_entry_t *dir) {
 	int file_index = search_dir_index_in_dir(dir_entry_list, dir->name);
@@ -551,47 +678,70 @@ int delete_dir(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *father_d
 	return 1;
 }
 
-int add_entry_in_dir_entry(dir_entry_t* dir, dir_entry_t* dir_entry_list, dir_entry_t* entry, const info_entry_t* info) {
-    int index_in_dir_entry = get_first_empty_dir_entry(dir_entry_list, info->dir_entry_number);
-    if (index_in_dir_entry == -1) return -1;
+/**
+ *
+ * @param dir
+ * @param dir_entry_list
+ * @param entry
+ * @param info
+ * @return
+ */
+int
+add_entry_in_dir_entry(dir_entry_t *dir, dir_entry_t *dir_entry_list, dir_entry_t *entry,
+					   const info_entry_t *info) {
+	int index_in_dir_entry = get_first_empty_dir_entry(dir_entry_list,
+													   info->dir_entry_number);
+	if (index_in_dir_entry == -1) return -1;
 
-    memcpy(&dir_entry_list[index_in_dir_entry], entry, sizeof(dir_entry_t));
+	memcpy(&dir_entry_list[index_in_dir_entry], entry, sizeof(dir_entry_t));
 
-    uint32_t sector_to_write;
-    if (dir == NULL)
-        sector_to_write = info->sector_per_fat+1;
-    else
-        sector_to_write = info->sector_per_fat+1+dir->first_block;
-    write_sector(sector_to_write, dir_entry_list);
+	uint32_t sector_to_write;
+	if (dir == NULL)
+		sector_to_write = info->sector_per_fat + 1;
+	else
+		sector_to_write = info->sector_per_fat + 1 + dir->first_block;
+	write_sector(sector_to_write, dir_entry_list);
 
-    return 0;
+	return 0;
 }
 
+/**
+ *
+ * @param father_dir
+ * @param dir_entry_list
+ * @param entry
+ * @param info
+ * @param name
+ * @param uid
+ * @param gid
+ * @param mode
+ * @return
+ */
 int update_entry(dir_entry_t *father_dir, dir_entry_t *dir_entry_list, dir_entry_t *entry, const info_entry_t *info,
-                 char* name, uid_t uid, gid_t gid, mode_t mode) {
-    int file_index = search_file_index_in_dir(dir_entry_list, entry->name);
-    int dir_index = search_dir_index_in_dir(dir_entry_list, entry->name);
-    if (file_index == -1 && dir_index) return -1;
+				 char *name, uid_t uid, gid_t gid, mode_t mode) {
+	int file_index = search_file_index_in_dir(dir_entry_list, entry->name);
+	int dir_index = search_dir_index_in_dir(dir_entry_list, entry->name);
+	if (file_index == -1 && dir_index) return -1;
 
-    strcpy(entry->name, name);
-    entry->uid = uid;
-    entry->gid = gid;
-    entry->mode = mode;
+	strcpy(entry->name, name);
+	entry->uid = uid;
+	entry->gid = gid;
+	entry->mode = mode;
 
-    if (file_index > -1)
-        memcpy(&dir_entry_list[file_index], entry, sizeof(dir_entry_t));
-    else
-        memcpy(&dir_entry_list[dir_index], entry, sizeof(dir_entry_t));
+	if (file_index > -1)
+		memcpy(&dir_entry_list[file_index], entry, sizeof(dir_entry_t));
+	else
+		memcpy(&dir_entry_list[dir_index], entry, sizeof(dir_entry_t));
 
-    // update dir entry list
-    uint32_t sector_to_write;
-    if (father_dir == NULL)
-        sector_to_write = info->sector_per_fat + 1;
-    else
-        sector_to_write = info->sector_per_fat + 1 + father_dir->first_block;
-    write_sector(sector_to_write, dir_entry_list);
+	// update dir entry list
+	uint32_t sector_to_write;
+	if (father_dir == NULL)
+		sector_to_write = info->sector_per_fat + 1;
+	else
+		sector_to_write = info->sector_per_fat + 1 + father_dir->first_block;
+	write_sector(sector_to_write, dir_entry_list);
 
-    return 1;
+	return 1;
 }
 
 #pragma clang diagnostic pop

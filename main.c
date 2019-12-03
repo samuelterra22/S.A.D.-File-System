@@ -1,3 +1,9 @@
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma ide diagnostic ignored "OCUnusedMacroInspection"
+#pragma ide diagnostic ignored "hicpp-signed-bitwise"
+#pragma clang diagnostic ignored "-Wunused-parameter"
+
 /******************************************************************************
  * Implementação do sistema de arquivos S.A.D. utilizando biblioteca FUSE	  *
  *                                                                            *
@@ -8,8 +14,6 @@
  * Address: Universidade Federal de Lavras                                    *
  * Date:    Nov-Dez/2019                                                      *
  *****************************************************************************/
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
 #define FUSE_USE_VERSION 30
 
 #include <fuse.h>
@@ -24,12 +28,21 @@ info_entry_t info_sd;
 fat_entry_t *fat;
 dir_entry_t *root_entry;
 
-void print_entry(dir_entry_t* entry) {
-    for(int i = 0; i < DIRENTRYCOUNT; i++) {
-        if (entry[i].mode == EMPTY_TYPE) fprintf(stderr, "emtpy "); else fprintf(stderr, "%s ", entry[i].name);
-    }
+/*
+void print_entry(dir_entry_t *entry) {
+	for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
+		if (entry[i].mode == EMPTY_TYPE) fprintf(stderr, "emtpy ");
+		else
+			fprintf(stderr, "%s ", entry[i].name);
+	}
 }
+*/
 
+/**
+ *
+ * @param string
+ * @return
+ */
 int num_of_bars(const char *string) {
 	int empty_spaces = 0;
 
@@ -41,6 +54,11 @@ int num_of_bars(const char *string) {
 	return empty_spaces;
 }
 
+/**
+ *
+ * @param string
+ * @return
+ */
 char **explode_path(const char *string) {
 	const char s[2] = "/";
 	char *token;
@@ -57,7 +75,6 @@ char **explode_path(const char *string) {
 	token = strtok(str, "/");
 
 	while (token != NULL) {
-		//ret[i] = token;
 		ret[i] = malloc(sizeof(char) * strlen(token));
 		strcpy(ret[i], token);
 		token = strtok(NULL, s);
@@ -67,53 +84,83 @@ char **explode_path(const char *string) {
 	return ret;
 }
 
+/**
+ *
+ * @param path
+ * @param size
+ */
 void delete_path(char **path, int size) {
 	for (int i = 0; i < size; i++)
 		free(path[i]);
 	free(path);
 }
 
-void find_dir_and_entrys(char** bars, int num_of_bars, dir_entry_t** actual_dir_entry, dir_entry_t** actual_dir) {
-    *actual_dir_entry = malloc(SECTOR_SIZE);
-    memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
-    *actual_dir = NULL;
-    dir_descriptor_t descriptor;
-    int has_malloc = 0;
+/**
+ *
+ * @param bars
+ * @param num_of_bars
+ * @param actual_dir_entry
+ * @param actual_dir
+ */
+void find_dir_and_entrys(char **bars, int num_of_bars, dir_entry_t **actual_dir_entry,
+						 dir_entry_t **actual_dir) {
+	*actual_dir_entry = malloc(SECTOR_SIZE);
+	memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
+	*actual_dir = NULL;
+	dir_descriptor_t descriptor;
+	int has_malloc = 0;
 
-    for(int i = 0; i < num_of_bars; i++) {
-        search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
-        memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+	for (int i = 0; i < num_of_bars; i++) {
+		search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
+		memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
 
-        if (has_malloc == 0) {
-            *actual_dir = malloc(sizeof(dir_entry_t));
-            has_malloc = 1;
-        }
-        //*actual_dir = &descriptor.dir_infos;
-        memcpy(*actual_dir, &descriptor.dir_infos, sizeof(dir_entry_t));
-    }
+		if (has_malloc == 0) {
+			*actual_dir = malloc(sizeof(dir_entry_t));
+			has_malloc = 1;
+		}
+		// *actual_dir = &descriptor.dir_infos;
+		memcpy(*actual_dir, &descriptor.dir_infos, sizeof(dir_entry_t));
+	}
 }
 
-void find_dir_entrys(char** bars, int num_of_bars, dir_entry_t** actual_dir_entry) {
-    *actual_dir_entry = malloc(SECTOR_SIZE);
-    memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
-    dir_descriptor_t descriptor;
+/**
+ *
+ * @param bars
+ * @param num_of_bars
+ * @param actual_dir_entry
+ */
+void find_dir_entrys(char **bars, int num_of_bars, dir_entry_t **actual_dir_entry) {
+	*actual_dir_entry = malloc(SECTOR_SIZE);
+	memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
+	dir_descriptor_t descriptor;
 
-    for(int i = 0; i < num_of_bars; i++) {
-        search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
-        memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
-    }
+	for (int i = 0; i < num_of_bars; i++) {
+		search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
+		memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+	}
 }
 
-void get_path_without_dest(char** bars, int num_bars, char* str) {
-    memset(str, 0, MAXPATHLENGTH);
-    strcat(str, "/");
+/**
+ *
+ * @param bars
+ * @param num_bars
+ * @param str
+ */
+void get_path_without_dest(char **bars, int num_bars, char *str) {
+	memset(str, 0, MAXPATHLENGTH);
+	strcat(str, "/");
 
-    for(int i = 0; i < num_bars-1; i++) {
-        strcat(str, bars[i]);
-        strcat(str, "/");
-    }
+	for (int i = 0; i < num_bars - 1; i++) {
+		strcat(str, bars[i]);
+		strcat(str, "/");
+	}
 }
 
+/**
+ *
+ * @param date
+ * @return
+ */
 time_t date_to_time(date_t *date) {
 	time_t raw_time;
 	struct tm *time_info;
@@ -157,16 +204,17 @@ static int sad_getattr(const char *path, struct stat *st) {
 	int number_of_bars = num_of_bars(path);
 	char **bars = explode_path(path);
 
-    dir_entry_t *actual_dir;
-    find_dir_entrys(bars, number_of_bars-1, &actual_dir);
+	dir_entry_t *actual_dir;
+	find_dir_entrys(bars, number_of_bars - 1, &actual_dir);
 
 	dir_descriptor_t dir_descriptor;
 	dir_entry_t file;
 
-	int dir_exist = -1;
-	int file_exist = -1;
+	int dir_exist;
+	int file_exist;
 
-	dir_exist = search_dir_entry(actual_dir, &info_sd, bars[number_of_bars - 1], &dir_descriptor);
+	dir_exist = search_dir_entry(actual_dir, &info_sd, bars[number_of_bars - 1],
+								 &dir_descriptor);
 	file_exist = search_file_in_dir(actual_dir, bars[number_of_bars - 1], &file);
 
 	if (dir_exist == 1) {
@@ -212,9 +260,8 @@ static int sad_getattr(const char *path, struct stat *st) {
  *****************************************************************************/
 static int sad_readdir(const char *path, void *buffer, fuse_fill_dir_t filler,
 					   off_t offset, struct fuse_file_info *fi) {
-	filler(buffer, ".", NULL, 0); // Current Directory
-	filler(buffer, "..", NULL, 0); // Parent Directory
-
+	filler(buffer, ".", NULL, 0); /* Current Directory */
+	filler(buffer, "..", NULL, 0); /* Parent Directory */
 	if (strcmp("/", path) == 0) {
 		for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
 			if (root_entry[i].mode != EMPTY_TYPE) {
@@ -227,8 +274,8 @@ static int sad_readdir(const char *path, void *buffer, fuse_fill_dir_t filler,
 	int number_of_bars = num_of_bars(path);
 	char **bars = explode_path(path);
 
-    dir_entry_t *actual_dir_entry;
-    find_dir_entrys(bars, number_of_bars, &actual_dir_entry);
+	dir_entry_t *actual_dir_entry;
+	find_dir_entrys(bars, number_of_bars, &actual_dir_entry);
 
 	for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
 		if (actual_dir_entry[i].mode != EMPTY_TYPE) {
@@ -264,11 +311,12 @@ static int sad_read(const char *path, char *buffer, size_t size, off_t offset,
 	int number_of_bars = num_of_bars(path);
 	char **bars = explode_path(path);
 
-    dir_entry_t *actual_dir_entry;
-    find_dir_entrys(bars, number_of_bars - 1, &actual_dir_entry);
+	dir_entry_t *actual_dir_entry;
+	find_dir_entrys(bars, number_of_bars - 1, &actual_dir_entry);
 
 	dir_entry_t file;
-	int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1], &file);
+//	int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
+//										&file);
 
 	int total = read_file(fat, &info_sd, &file, offset, buffer, size);
 
@@ -300,22 +348,24 @@ int sad_mknod(const char *path, mode_t mode, dev_t dev) {
 	int number_of_bars = num_of_bars(path);
 	char **bars = explode_path(path);
 
-    dir_entry_t *actual_dir_entry;
-    dir_entry_t *actual_dir;
-    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+	dir_entry_t *actual_dir_entry;
+	dir_entry_t *actual_dir;
+	find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
 	char name[MAXNAME];
 	memset(name, 0, MAXNAME);
 	strcpy(name, bars[number_of_bars - 1]);
 
 	struct fuse_context *context = fuse_get_context();
-	create_empty_file(actual_dir, actual_dir_entry, &info_sd, fat, name, mode, context->uid, context->gid);
+	create_empty_file(actual_dir, actual_dir_entry, &info_sd, fat, name, mode,
+					  context->uid, context->gid);
 
 	if (actual_dir == NULL)
 		memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 
 	free(actual_dir_entry);
 	delete_path(bars, number_of_bars);
+
 	return 0;
 }
 
@@ -330,22 +380,24 @@ int sad_mkdir(const char *path, mode_t mode) {
 	int number_of_bars = num_of_bars(path);
 	char **bars = explode_path(path);
 
-    dir_entry_t *actual_dir_entry;
-    dir_entry_t *actual_dir;
-    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+	dir_entry_t *actual_dir_entry;
+	dir_entry_t *actual_dir;
+	find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
 	char name[MAXNAME];
 	memset(name, 0, MAXNAME);
 	strcpy(name, bars[number_of_bars - 1]);
 
 	struct fuse_context *context = fuse_get_context();
-	create_empty_dir(actual_dir, actual_dir_entry, &info_sd, fat, name, mode | S_IFDIR, context->uid, context->gid);
+	create_empty_dir(actual_dir, actual_dir_entry, &info_sd, fat, name, mode | S_IFDIR,
+					 context->uid, context->gid);
 
 	if (actual_dir == NULL)
 		memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 
 	delete_path(bars, number_of_bars);
 	free(actual_dir_entry);
+
 	return 0;
 }
 
@@ -356,12 +408,13 @@ int sad_unlink(const char *path) {
 	int number_of_bars = num_of_bars(path);
 	char **bars = explode_path(path);
 
-    dir_entry_t *actual_dir_entry;
-    dir_entry_t *actual_dir;
-    find_dir_and_entrys(bars, number_of_bars-1, &actual_dir_entry, &actual_dir);
+	dir_entry_t *actual_dir_entry;
+	dir_entry_t *actual_dir;
+	find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
 	dir_entry_t file;
-	int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1], &file);
+//	int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
+//										&file);
 
 	delete_file(fat, &info_sd, actual_dir, actual_dir_entry, &file);
 
@@ -381,12 +434,13 @@ int sad_rmdir(const char *path) {
 	int number_of_bars = num_of_bars(path);
 	char **bars = explode_path(path);
 
-    dir_entry_t *actual_dir_entry;
-    dir_entry_t *actual_dir;
-    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+	dir_entry_t *actual_dir_entry;
+	dir_entry_t *actual_dir;
+	find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
 	dir_descriptor_t dirDescriptor;
-	search_dir_entry(actual_dir_entry, &info_sd, bars[number_of_bars - 1], &dirDescriptor);
+	search_dir_entry(actual_dir_entry, &info_sd, bars[number_of_bars - 1],
+					 &dirDescriptor);
 
 	delete_dir(fat, &info_sd, actual_dir, actual_dir_entry, &dirDescriptor.dir_infos);
 
@@ -416,54 +470,58 @@ int sad_symlink(const char *path, const char *link) {
  * deleted.
  *****************************************************************************/
 int sad_rename(const char *path, const char *newpath) {
-    int number_of_bars_src = num_of_bars(path);
-    char **bars_src = explode_path(path);
+	int number_of_bars_src = num_of_bars(path);
+	char **bars_src = explode_path(path);
 
-    int number_of_bars_dest = num_of_bars(newpath);
-    char **bars_dest = explode_path(newpath);
+	int number_of_bars_dest = num_of_bars(newpath);
+	char **bars_dest = explode_path(newpath);
 
-    dir_entry_t *actual_dir_entry_src;
-    dir_entry_t *actual_dir_src;
-    find_dir_and_entrys(bars_src, number_of_bars_src - 1, &actual_dir_entry_src, &actual_dir_src);
+	dir_entry_t *actual_dir_entry_src;
+	dir_entry_t *actual_dir_src;
+	find_dir_and_entrys(bars_src, number_of_bars_src - 1, &actual_dir_entry_src,
+						&actual_dir_src);
 
-    dir_entry_t *actual_dir_entry_dest;
-    dir_entry_t *actual_dir_dest;
-    find_dir_and_entrys(bars_dest, number_of_bars_dest - 1, &actual_dir_entry_dest, &actual_dir_dest);
+	dir_entry_t *actual_dir_entry_dest;
+	dir_entry_t *actual_dir_dest;
+	find_dir_and_entrys(bars_dest, number_of_bars_dest - 1, &actual_dir_entry_dest,
+						&actual_dir_dest);
 
-    dir_entry_t entry_src;
-    search_entry_in_dir(actual_dir_entry_src, bars_src[number_of_bars_src - 1], &entry_src);
+	dir_entry_t entry_src;
+	search_entry_in_dir(actual_dir_entry_src, bars_src[number_of_bars_src - 1],
+						&entry_src);
 
-    dir_entry_t entry_dest;
-    memcpy(&entry_dest, &entry_src, sizeof(dir_entry_t));
+	dir_entry_t entry_dest;
+	memcpy(&entry_dest, &entry_src, sizeof(dir_entry_t));
 
-    strcpy(entry_dest.name, bars_dest[number_of_bars_dest-1]);
-    add_entry_in_dir_entry(actual_dir_dest, actual_dir_entry_dest, &entry_dest, &info_sd);
+	strcpy(entry_dest.name, bars_dest[number_of_bars_dest - 1]);
+	add_entry_in_dir_entry(actual_dir_dest, actual_dir_entry_dest, &entry_dest, &info_sd);
 
-    char origin_path[MAXPATHLENGTH];
-    char dest_path[MAXPATHLENGTH];
+	char origin_path[MAXPATHLENGTH];
+	char dest_path[MAXPATHLENGTH];
 
-    get_path_without_dest(bars_src, number_of_bars_src, origin_path);
-    get_path_without_dest(bars_dest, number_of_bars_dest, dest_path);
+	get_path_without_dest(bars_src, number_of_bars_src, origin_path);
+	get_path_without_dest(bars_dest, number_of_bars_dest, dest_path);
 
-    fprintf(stderr, "scr: %s\n", origin_path);
-    fprintf(stderr, "dest: %s\n", dest_path);
+	fprintf(stderr, "scr: %s\n", origin_path);
+	fprintf(stderr, "dest: %s\n", dest_path);
 
-    if (strcmp(origin_path, dest_path) == 0) {
-        memcpy(actual_dir_entry_src, actual_dir_entry_dest, SECTOR_SIZE);
-    }
+	if (strcmp(origin_path, dest_path) == 0) {
+		memcpy(actual_dir_entry_src, actual_dir_entry_dest, SECTOR_SIZE);
+	}
 
-    update_entry(actual_dir_src, actual_dir_entry_src, &entry_src, &info_sd, entry_src.name, entry_src.uid, entry_src.gid, EMPTY_TYPE);
+	update_entry(actual_dir_src, actual_dir_entry_src, &entry_src, &info_sd,
+				 entry_src.name, entry_src.uid, entry_src.gid, EMPTY_TYPE);
 
-    if (strcmp(dest_path, "/") == 0 && strcmp(origin_path, dest_path) != 0)
-        memcpy(root_entry, actual_dir_entry_dest, SECTOR_SIZE);
-    else if (strcmp(dest_path, "/") == 0 && strcmp(origin_path, dest_path) == 0)
-        memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
-    else if (strcmp(origin_path, "/") == 0 && strcmp(origin_path, dest_path) != 0)
-        memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
-    else if (strcmp(origin_path, "/") == 0 && strcmp(origin_path, dest_path) == 0)
-        memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
+	if (strcmp(dest_path, "/") == 0 && strcmp(origin_path, dest_path) != 0)
+		memcpy(root_entry, actual_dir_entry_dest, SECTOR_SIZE);
+	else if (strcmp(dest_path, "/") == 0 && strcmp(origin_path, dest_path) == 0)
+		memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
+	else if (strcmp(origin_path, "/") == 0 && strcmp(origin_path, dest_path) != 0)
+		memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
+	else if (strcmp(origin_path, "/") == 0 && strcmp(origin_path, dest_path) == 0)
+		memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
 
-    return 0;
+	return 0;
 }
 
 /******************************************************************************
@@ -530,14 +588,16 @@ int sad_write(const char *path, const char *buffer, size_t size, off_t offset,
 	int number_of_bars = num_of_bars(path);
 	char **bars = explode_path(path);
 
-    dir_entry_t *actual_dir_entry;
-    dir_entry_t *actual_dir;
-    find_dir_and_entrys(bars, number_of_bars -1, &actual_dir_entry, &actual_dir);
+	dir_entry_t *actual_dir_entry;
+	dir_entry_t *actual_dir;
+	find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
 	dir_entry_t file;
-	int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1], &file);
+//	int file_exist = search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
+//										&file);
 
-	int total = write_file(fat, &info_sd, actual_dir, actual_dir_entry, &file, offset, buffer, size);
+	int total = write_file(fat, &info_sd, actual_dir, actual_dir_entry, &file, offset,
+						   buffer, size);
 
 	if (actual_dir == NULL)
 		memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
@@ -712,7 +772,7 @@ static struct fuse_operations sad_operations = {
 		.read = sad_read,
 		.readdir = sad_readdir,
 		.readlink = sad_readlink,
-		.getdir = NULL, // .getdir is deprecated
+		.getdir = NULL, /* .getdir is deprecated */
 		.mknod = sad_mknod,
 		.mkdir = sad_mkdir,
 		.unlink = sad_unlink,
@@ -762,7 +822,8 @@ int main(int argc, char *argv[]) {
 
 	init(&info_sd, &fat, &root_entry);
 
-	fprintf(stderr, "Using Fuse library version %d.%d\n", FUSE_MAJOR_VERSION, FUSE_MINOR_VERSION);
+	fprintf(stderr, "Using Fuse library version %d.%d\n", FUSE_MAJOR_VERSION,
+			FUSE_MINOR_VERSION);
 	fuse_status = fuse_main(argc, argv, &sad_operations, NULL);
 
 	fprintf(stderr, "fuse_main returned %d\n", fuse_status);
