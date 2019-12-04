@@ -557,6 +557,8 @@ write_file(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *dir, dir_ent
 		sector_to_write = info->sector_per_fat + 1 + dir->first_block;
 	write_sector(sector_to_write, dir_entry_list);
 
+	read_sector(sector_to_write, dir_entry_list);
+
 	return size;
 }
 
