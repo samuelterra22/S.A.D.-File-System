@@ -497,6 +497,8 @@ int sad_rename(const char *path, const char *newpath) {
 
     if (strcmp(origin_path, dest_path) == 0) {
         memcpy(actual_dir_entry_src, actual_dir_entry_dest, SECTOR_SIZE);
+        if (actual_dir_dest != NULL)
+            memcpy(actual_dir_src, actual_dir_dest, sizeof(dir_entry_t));
     }
 
     update_entry(actual_dir_src, actual_dir_entry_src, &entry_src, &info_sd,
@@ -528,6 +530,23 @@ int sad_link(const char *path, const char *newpath) {
  * NULL if the file is open.
  *****************************************************************************/
 int sad_chmod(const char *path, mode_t mode) {
+    int number_of_bars = num_of_bars(path);
+    char **bars = explode_path(path);
+
+    dir_entry_t *actual_dir_entry;
+    dir_entry_t *actual_dir;
+    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+
+    dir_entry_t entry_src;
+    search_entry_in_dir(actual_dir_entry, bars[number_of_bars - 1],
+                        &entry_src);
+
+    update_entry(actual_dir, actual_dir_entry, &entry_src, &info_sd,
+                 entry_src.name, entry_src.uid, entry_src.gid, mode);
+
+    if (actual_dir == NULL)
+        memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+
     return 0;
 }
 
@@ -541,6 +560,24 @@ int sad_chmod(const char *path, mode_t mode) {
  * the setuid and setgid bits.
  *****************************************************************************/
 int sad_chown(const char *path, uid_t uid, gid_t gid) {
+
+    int number_of_bars = num_of_bars(path);
+    char **bars = explode_path(path);
+
+    dir_entry_t *actual_dir_entry;
+    dir_entry_t *actual_dir;
+    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+
+    dir_entry_t entry_src;
+    search_entry_in_dir(actual_dir_entry, bars[number_of_bars - 1],
+                        &entry_src);
+
+    update_entry(actual_dir, actual_dir_entry, &entry_src, &info_sd,
+                 entry_src.name, uid, gid, entry_src.mode);
+
+    if (actual_dir == NULL)
+        memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+
     return 0;
 }
 
