@@ -16,6 +16,6 @@ find_package(FUSE REQUIRED)
 
 include_directories(${FUSE_INCLUDE_DIR})
 
-add_executable(SAD main.c minifat/minifat.c minifat/minifat.h)
+add_executable(SAD main.c minifat/serial/serial.c minifat/serial/serial.h minifat/minifat.c minifat/minifat.h)
 
 target_link_libraries(SAD ${FUSE_LIBRARIES})

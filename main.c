@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "minifat/minifat.h"
+#include "minifat/serial/serial.h"
 
 info_entry_t info_sd;
 fat_entry_t *fat;
@@ -816,11 +817,15 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    fd = open(virtual_disk, O_RDWR);
+    //fd = open(virtual_disk, O_RDWR);
+    fd = serialport_init("/dev/ttyUSB0", 115200);
+    serialport_flush(fd);
 
     if (strcmp(argv[1], "-format") == 0) {
         printf("Formatting disk ..........");
-        format(3862528);
+        //format(386252);
+        //format(38625);
+        format(300625);
         printf("   disk successfully formatted\n");
 
         return EXIT_SUCCESS;

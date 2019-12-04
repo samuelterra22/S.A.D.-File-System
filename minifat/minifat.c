@@ -4,6 +4,7 @@
 #pragma ide diagnostic ignored "hicpp-signed-bitwise"
 
 #include "minifat.h"
+#include "serial/serial.h"
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
@@ -11,6 +12,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <stdio.h>
 
 int fd;
 
@@ -33,7 +35,15 @@ void tm_to_date(struct tm *tm, date_t *date) {
  * @param block
  * @param buffer
  */
-void write_block(uint32_t block, void *buffer) {
+void write_block(uint32_t block, char *buffer) {
+/*    char buffer_write_command[5];
+    buffer_write_command[0] = 2;
+    uint32_t* block_to_write = (uint32_t*) &buffer_write_command[1];
+    *block_to_write = block;
+
+    serialport_write(fd, buffer_write_command, 5);
+    serialport_write(fd, buffer, BLOCK_SIZE);*/
+
 	lseek(fd, block * BLOCK_SIZE, SEEK_SET);
 	write(fd, buffer, BLOCK_SIZE);
 }
@@ -44,8 +54,18 @@ void write_block(uint32_t block, void *buffer) {
  * @param buffer
  */
 void read_block(uint32_t block, void *buffer) {
+    char buffer_read_command[5];
+    buffer_read_command[0] = 1;
+    uint32_t* block_to_read = (uint32_t*) &buffer_read_command[1];
+    *block_to_read = block;
+
+    memset(buffer, 0, BLOCK_SIZE);
+    serialport_write(fd, buffer_read_command, 5);
+    serialport_read_until(fd, buffer, BLOCK_SIZE, 5000);
+
+/*
 	lseek(fd, block * BLOCK_SIZE, SEEK_SET);
-	read(fd, buffer, BLOCK_SIZE);
+	read(fd, buffer, BLOCK_SIZE);*/
 }
 
 /**
@@ -56,9 +76,17 @@ void read_block(uint32_t block, void *buffer) {
 void write_sector(uint32_t sector, void *buffer) {
 	uint32_t first_block = sector * (SECTOR_SIZE / BLOCK_SIZE);
 
-	for (int i = 0; i < SECTOR_SIZE / BLOCK_SIZE; i++) {
+/*	for (int i = 0; i < SECTOR_SIZE / BLOCK_SIZE; i++) {
 		write_block(first_block + i, buffer + (i * BLOCK_SIZE));
-	}
+	}*/
+
+    char buffer_write_command[5];
+    buffer_write_command[0] = 2;
+    uint32_t* block_to_write = (uint32_t*) &buffer_write_command[1];
+    *block_to_write = first_block;
+
+    serialport_write(fd, buffer_write_command, 5);
+    serialport_write(fd, buffer, SECTOR_SIZE);
 }
 
 /**
