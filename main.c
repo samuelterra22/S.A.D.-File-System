@@ -775,35 +775,35 @@ int sad_fgetattr(const char *path, struct stat *statbuf, struct fuse_file_info *
  *****************************************************************************/
 static struct fuse_operations sad_operations = {
         .getattr = sad_getattr,
-        .open = sad_open,
+//        .open = sad_open,
         .read = sad_read,
         .readdir = sad_readdir,
-        .readlink = sad_readlink,
-        .getdir = NULL, /* .getdir is deprecated */
+//        .readlink = sad_readlink,
+//        .getdir = NULL, /* .getdir is deprecated */
         .mknod = sad_mknod,
         .mkdir = sad_mkdir,
         .unlink = sad_unlink,
         .rmdir = sad_rmdir,
-        .symlink = sad_symlink,
+//        .symlink = sad_symlink,
         .rename = sad_rename,
-        .link = sad_link,
+//        .link = sad_link,
         .chmod = sad_chmod,
         .chown = sad_chown,
         .truncate = sad_truncate,
         .utime = sad_utime,
         .write = sad_write,
-        .statfs = sad_statfs,
-        .flush = sad_flush,
-        .release = sad_release,
-        .fsync = sad_fsync,
-        .opendir = sad_opendir,
-        .releasedir = sad_releasedir,
-        .fsyncdir = sad_fsyncdir,
+//        .statfs = sad_statfs,
+//        .flush = sad_flush,
+//        .release = sad_release,
+//        .fsync = sad_fsync,
+//        .opendir = sad_opendir,
+//        .releasedir = sad_releasedir,
+//        .fsyncdir = sad_fsyncdir,
         .init = sad_init,
         .destroy = sad_destroy,
-        .access = sad_access,
-        .ftruncate = sad_ftruncate,
-        .fgetattr = sad_fgetattr
+//        .access = sad_access,
+//        .ftruncate = sad_ftruncate,
+//        .fgetattr = sad_fgetattr
 };
 
 /******************************************************************************
