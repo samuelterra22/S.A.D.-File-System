@@ -23,7 +23,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "minifat/minifat.h"
-#include "minifat/serial/serial.h"
+#include "serial/serial.h"
 
 info_entry_t info_sd;
 fat_entry_t *fat;

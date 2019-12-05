@@ -4,7 +4,7 @@
 #pragma ide diagnostic ignored "hicpp-signed-bitwise"
 
 #include "minifat.h"
-#include "serial/serial.h"
+#include "../serial/serial.h"
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
