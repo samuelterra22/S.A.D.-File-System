@@ -17,7 +17,7 @@
 int fd;
 
 /**
- *
+ * Function to convert struct tm to date_t
  * @param tm
  * @param date
  */
@@ -31,7 +31,7 @@ void tm_to_date(struct tm *tm, date_t *date) {
 }
 
 /**
- *
+ * Write one block in sd card connected in computer
  * @param block
  * @param buffer
  */
@@ -49,19 +49,21 @@ void write_block(uint32_t block, char *buffer) {
 }
 
 /**
- *
+ * Function to read one block in Arduino
  * @param block
  * @param buffer
  */
 void read_block(uint32_t block, void *buffer) {
     char buffer_read_command[5];
+
+    // insert command to read (1) and block number
     buffer_read_command[0] = 1;
     uint32_t* block_to_read = (uint32_t*) &buffer_read_command[1];
     *block_to_read = block;
 
     memset(buffer, 0, BLOCK_SIZE);
-    serialport_write(fd, buffer_read_command, 5);
-    serialport_read_until(fd, buffer, BLOCK_SIZE, 5000);
+    serialport_write(fd, buffer_read_command, 5); // send command to read block block
+    serialport_read_until(fd, buffer, BLOCK_SIZE, 5000); // read block and save in buffer
 
 /*
 	lseek(fd, block * BLOCK_SIZE, SEEK_SET);
@@ -69,41 +71,46 @@ void read_block(uint32_t block, void *buffer) {
 }
 
 /**
- *
+ * Function to write sector in sd card
  * @param sector
  * @param buffer
  */
 void write_sector(uint32_t sector, void *buffer) {
+    // calculate first block from sector
 	uint32_t first_block = sector * (SECTOR_SIZE / BLOCK_SIZE);
 
 /*	for (int i = 0; i < SECTOR_SIZE / BLOCK_SIZE; i++) {
 		write_block(first_block + i, buffer + (i * BLOCK_SIZE));
 	}*/
-
     char buffer_write_command[5];
+
+    // send command to write sector
     buffer_write_command[0] = 2;
     uint32_t* block_to_write = (uint32_t*) &buffer_write_command[1];
     *block_to_write = first_block;
 
+    // send command and sector to write
     serialport_write(fd, buffer_write_command, 5);
     serialport_write(fd, buffer, SECTOR_SIZE);
 }
 
 /**
- *
+ * Function to read one sector
  * @param sector
  * @param buffer
  */
 void read_sector(uint32_t sector, void *buffer) {
+    // calculate first block to read
 	uint32_t first_block = sector * (SECTOR_SIZE / BLOCK_SIZE);
 
+	// loop to read all blocks from sector
 	for (int i = 0; i < SECTOR_SIZE / BLOCK_SIZE; i++) {
 		read_block(first_block + i, buffer + (i * BLOCK_SIZE));
 	}
 }
 
 /**
- *
+ * Function to write FAT table in sd card
  * @param fat
  * @param size
  */
@@ -117,20 +124,17 @@ void write_fat_table(void *fat, int size) {
 }
 
 /**
- *
- * @param size
+ * Function to format card
+ * @param size - card size in blocks
  * @return
  */
 int format(int size) {
-	int blocks_count = size;// /BLOCK_SIZE;
-	int sector_count = blocks_count / (SECTOR_SIZE / BLOCK_SIZE);
+	int blocks_count = size;
+	int sector_count = blocks_count / (SECTOR_SIZE / BLOCK_SIZE); // calcula a quantidade de setores existe no cartao
+
 	char buffer[SECTOR_SIZE];
 
-	//fat_entry_t* fat_entry = (fat_entry_t*) malloc(sizeof(fat_entry_t) * sector_count);
-	//memset(fat_entry, UNUSED, sizeof(fat_entry_t) * sector_count);
-
-	//void* table = fat_entry;
-
+	// calcula a quantidade de blocos necessarios para escrever a tabela de fat
 	int qtd_sectors_for_fat_table = (int) ceil(((double) sizeof(fat_entry_t) * sector_count) / SECTOR_SIZE);
 
 	// write fat entry
@@ -139,9 +143,7 @@ int format(int size) {
 		write_sector(i + 1, buffer);
 	}
 
-	// free(fat_entry);
-
-	// write fat infos
+	// insert data to info struct
 	int blocks_per_sector = SECTOR_SIZE / BLOCK_SIZE;
 	info_entry_t info = {.total_block = blocks_count,
 			.available_blocks = blocks_count - (blocks_per_sector) - (blocks_per_sector * qtd_sectors_for_fat_table) -
@@ -151,6 +153,7 @@ int format(int size) {
 			.sector_per_fat = qtd_sectors_for_fat_table,
 			.dir_entry_number = DIRENTRYCOUNT};
 
+	// write info struct in sector 0
 	memset(buffer, 0x0, SECTOR_SIZE);
 	memcpy(buffer, &info, sizeof(info_entry_t));
 	write_sector(0, buffer);
@@ -664,6 +667,7 @@ int delete_file(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *dir, di
 	}
 	file->mode = 0;
 
+    write_fat_table(fat, info->sector_per_fat);
 	memcpy(&dir_entry_list[file_index], file, sizeof(dir_entry_t));
 
 	// update dir entry list
@@ -695,6 +699,7 @@ int delete_dir(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *father_d
 	fat[sector - 1] = UNUSED;
 	dir->mode = 0;
 
+    write_fat_table(fat, info->sector_per_fat);
 	memcpy(&dir_entry_list[file_index], dir, sizeof(dir_entry_t));
 
 	// update dir entry list
