@@ -119,3 +119,22 @@ int cache_update_entry(cache_entry_t* cache, char* path, dir_entry_t* entry) {
 
     return 1;
 }
+
+int cache_delete_entry(cache_entry_t* cache, char* path) {
+    int index_in_cache = cache_search_entry_index(cache, path);
+    if (index_in_cache == -1) return -1;
+
+    cache[index_in_cache].is_valid = FALSE;
+
+    return 1;
+}
+
+int cache_delete_entry_list(cache_entry_t* cache, char* path) {
+    int index_in_cache = cache_search_entry_list_index(cache, path);
+    if (index_in_cache == -1) return -1;
+
+    cache[index_in_cache].is_valid = FALSE;
+
+    return 1;
+}
+

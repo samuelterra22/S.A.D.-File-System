@@ -31,11 +31,17 @@ struct cache_entry {
 typedef struct cache_entry cache_entry_t;
 
 void init_cache(cache_entry_t* cache);
+
 int cache_add_entry(cache_entry_t* cache, char* path, dir_entry_t* entry);
 int cache_add_entry_list(cache_entry_t* cache, char* path, dir_entry_t* entry_list);
+
 int cache_search_entry_list(cache_entry_t* cache, char* path, dir_entry_t** entry_list);
 int cache_search_entry(cache_entry_t* cache, char* path, dir_entry_t* actual_dir_entry);
+
 int cache_update_entry_list(cache_entry_t* cache, char* path, dir_entry_t* entry_list);
 int cache_update_entry(cache_entry_t* cache, char* path, dir_entry_t* entry);
+
+int cache_delete_entry(cache_entry_t* cache, char* path);
+int cache_delete_entry_list(cache_entry_t* cache, char* path);
 
 #endif //SAD_CACHE_H

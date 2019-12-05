@@ -509,6 +509,21 @@ int sad_unlink(const char *path) {
 
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+#ifdef CACHE_ENABLE
+    else {
+        // update dir entry with file mode 0 in cache
+        char dir_path[MAXPATHLENGTH];
+        get_path_without_dest(bars, number_of_bars, dir_path);
+        dir_path[strlen(dir_path)-1] = '\0';
+        int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
+        if (update_cache_ok == -1) {
+            cache_add_entry_list(cache, dir_path, actual_dir_entry);
+        }
+
+        // delete file in cache
+        cache_delete_entry(cache, path);
+    }
+#endif
 
     delete_path(bars, number_of_bars);
     free(actual_dir_entry);
@@ -535,6 +550,22 @@ int sad_rmdir(const char *path) {
 
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+#ifdef CACHE_ENABLE
+    else {
+        // update dir entry with file mode 0 in cache
+        char dir_path[MAXPATHLENGTH];
+        get_path_without_dest(bars, number_of_bars, dir_path);
+        dir_path[strlen(dir_path)-1] = '\0';
+        int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
+        if (update_cache_ok == -1) {
+            cache_add_entry_list(cache, dir_path, actual_dir_entry);
+        }
+
+        // delete file in cache
+        cache_delete_entry(cache, path);
+        cache_delete_entry_list(cache, path);
+    }
+#endif
 
     delete_path(bars, number_of_bars);
     free(actual_dir_entry);
