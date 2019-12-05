@@ -568,12 +568,12 @@ int sad_chown(const char *path, uid_t uid, gid_t gid) {
     dir_entry_t *actual_dir;
     find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
-    dir_entry_t entry_src;
+    dir_entry_t entry;
     search_entry_in_dir(actual_dir_entry, bars[number_of_bars - 1],
-                        &entry_src);
+                        &entry);
 
-    update_entry(actual_dir, actual_dir_entry, &entry_src, &info_sd,
-                 entry_src.name, uid, gid, entry_src.mode);
+    update_entry(actual_dir, actual_dir_entry, &entry, &info_sd,
+                 entry.name, uid, gid, entry.mode);
 
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);

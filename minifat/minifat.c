@@ -751,7 +751,7 @@ int update_entry(dir_entry_t *father_dir, dir_entry_t *dir_entry_list, dir_entry
 				 char *name, uid_t uid, gid_t gid, mode_t mode) {
 	int file_index = search_file_index_in_dir(dir_entry_list, entry->name);
 	int dir_index = search_dir_index_in_dir(dir_entry_list, entry->name);
-	if (file_index == -1 && dir_index) return -1;
+	if (file_index == -1 && dir_index == -1) return -1;
 
 	strcpy(entry->name, name);
 	entry->uid = uid;
