@@ -24,10 +24,15 @@
 #include <stdlib.h>
 #include "minifat/minifat.h"
 #include "serial/serial.h"
+#include "cache/cache.h"
 
 info_entry_t info_sd;
 fat_entry_t *fat;
 dir_entry_t *root_entry;
+
+#ifdef CACHE_ENABLE
+cache_entry_t cache[CACHE_MAX_SIZE];
+#endif
 
 /**
  *
@@ -102,6 +107,31 @@ void find_dir_and_entrys(char **bars, int num_of_bars, dir_entry_t **actual_dir_
     int has_malloc = 0;
 
     for (int i = 0; i < num_of_bars; i++) {
+#ifdef CACHE_ENABLE
+        int execute_search = 0;
+
+        int cache_return_list = cache_search_entry_list(cache, bars[i], &*actual_dir_entry);
+        if (cache_return_list == -1) {
+            search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
+            memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+            cache_add_entry_list(cache, bars[i], *actual_dir_entry);
+            execute_search = 1;
+        }
+
+        if (has_malloc == 0) {
+            *actual_dir = malloc(sizeof(dir_entry_t));
+            has_malloc = 1;
+        }
+
+        int cache_return_entry = cache_search_entry(cache, bars[i], *actual_dir);
+        if (cache_return_entry == -1) {
+            if (execute_search == 0) {
+                search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
+            }
+            memcpy(*actual_dir, &descriptor.dir_infos, sizeof(dir_entry_t));
+            cache_add_entry(cache, bars[i], *actual_dir);
+        }
+#else
         search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
         memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
 
@@ -110,6 +140,7 @@ void find_dir_and_entrys(char **bars, int num_of_bars, dir_entry_t **actual_dir_
             has_malloc = 1;
         }
         memcpy(*actual_dir, &descriptor.dir_infos, sizeof(dir_entry_t));
+#endif
     }
 }
 
@@ -125,8 +156,17 @@ void find_dir_entrys(char **bars, int num_of_bars, dir_entry_t **actual_dir_entr
     dir_descriptor_t descriptor;
 
     for (int i = 0; i < num_of_bars; i++) {
+#ifdef CACHE_ENABLE
+        int cache_return = cache_search_entry_list(cache, bars[i], &*actual_dir_entry);
+        if (cache_return == -1) {
+            search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
+            memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+            cache_add_entry_list(cache, bars[i], *actual_dir_entry);
+        }
+#else
         search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
         memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+#endif
     }
 }
 
@@ -200,12 +240,41 @@ static int sad_getattr(const char *path, struct stat *st) {
     dir_descriptor_t dir_descriptor;
     dir_entry_t file;
 
-    int dir_exist;
-    int file_exist;
+    int dir_exist = -1;
+    int file_exist = -1;
 
+#ifdef CACHE_ENABLE
+    int cache_dir_exist = cache_search_entry(cache, path, &dir_descriptor.dir_infos);
+    int cache_file_exist = cache_search_entry(cache, path, &file);
+    fprintf(stderr, "Resultados da cache buscando %s - cache_dir_exists: %d; cache_file_exist: %d\n", path, cache_dir_exist, cache_file_exist);
+
+    if (cache_dir_exist == -1) {
+        fprintf(stderr, "Foi buscar no cartao se o diretorio existe\n");
+        dir_exist = search_dir_entry(actual_dir, &info_sd, bars[number_of_bars - 1],
+                                     &dir_descriptor);
+        if (dir_exist == 1) {
+            fprintf(stderr, "Diretorio existe, vai adicionar na cache\n");
+            cache_add_entry(cache, path, &dir_descriptor.dir_infos);
+        }
+    } else if (S_ISDIR(dir_descriptor.dir_infos.mode)){
+        dir_exist = 1;
+    }
+    if (cache_file_exist == -1) {
+        fprintf(stderr, "Foi buscar no cartao se o arquivo existe\n");
+        file_exist = search_file_in_dir(actual_dir, bars[number_of_bars - 1], &file);
+
+        if (file_exist == 1) {
+            fprintf(stderr, "File existe, vai adicionar na cache\n");
+            cache_add_entry(cache, path, &file);
+        }
+    } else if (S_ISREG(file.mode)) {
+        file_exist = 1;
+    }
+#else
     dir_exist = search_dir_entry(actual_dir, &info_sd, bars[number_of_bars - 1],
                                  &dir_descriptor);
     file_exist = search_file_in_dir(actual_dir, bars[number_of_bars - 1], &file);
+#endif
 
     if (dir_exist == 1) {
         st->st_uid = dir_descriptor.dir_infos.uid;
@@ -891,6 +960,9 @@ int main(int argc, char *argv[]) {
     }
 
     init(&info_sd, &fat, &root_entry);
+#ifdef CACHE_ENABLE
+    init_cache(cache);
+#endif
 
     fprintf(stderr, "Using Fuse library version %d.%d\n", FUSE_MAJOR_VERSION,
             FUSE_MINOR_VERSION);
