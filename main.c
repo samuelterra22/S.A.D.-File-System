@@ -502,7 +502,7 @@ int sad_rename(const char *path, const char *newpath) {
     }
 
     update_entry(actual_dir_src, actual_dir_entry_src, &entry_src, &info_sd,
-                 entry_src.name, entry_src.uid, entry_src.gid, EMPTY_TYPE);
+                 entry_src.name, entry_src.uid, entry_src.gid, EMPTY_TYPE, NULL);
 
     if (strcmp(dest_path, "/") == 0 && strcmp(origin_path, dest_path) != 0)
         memcpy(root_entry, actual_dir_entry_dest, SECTOR_SIZE);
@@ -542,7 +542,7 @@ int sad_chmod(const char *path, mode_t mode) {
                         &entry_src);
 
     update_entry(actual_dir, actual_dir_entry, &entry_src, &info_sd,
-                 entry_src.name, entry_src.uid, entry_src.gid, mode);
+                 entry_src.name, entry_src.uid, entry_src.gid, mode, NULL);
 
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
@@ -573,7 +573,7 @@ int sad_chown(const char *path, uid_t uid, gid_t gid) {
                         &entry);
 
     update_entry(actual_dir, actual_dir_entry, &entry, &info_sd,
-                 entry.name, uid, gid, entry.mode);
+                 entry.name, uid, gid, entry.mode, NULL);
 
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
@@ -615,6 +615,28 @@ int sad_truncate(const char *path, off_t newsize) {
  * Change file last access and modification times
  *****************************************************************************/
 int sad_utime(const char *path, struct utimbuf *ubuf) {
+    struct tm *timeinfo;
+    timeinfo = localtime(&ubuf->modtime);
+    date_t mod_time;
+    tm_to_date(timeinfo, &mod_time);
+
+    int number_of_bars = num_of_bars(path);
+    char **bars = explode_path(path);
+
+    dir_entry_t *actual_dir_entry;
+    dir_entry_t *actual_dir;
+    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+
+    dir_entry_t entry;
+    search_entry_in_dir(actual_dir_entry, bars[number_of_bars - 1],
+                        &entry);
+
+    update_entry(actual_dir, actual_dir_entry, &entry, &info_sd,
+                 entry.name, entry.uid, entry.gid, entry.mode, &mod_time);
+
+    if (actual_dir == NULL)
+        memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+
     return 0;
 }
 

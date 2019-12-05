@@ -748,7 +748,7 @@ add_entry_in_dir_entry(dir_entry_t *dir, dir_entry_t *dir_entry_list, dir_entry_
  * @return
  */
 int update_entry(dir_entry_t *father_dir, dir_entry_t *dir_entry_list, dir_entry_t *entry, const info_entry_t *info,
-				 char *name, uid_t uid, gid_t gid, mode_t mode) {
+				 char *name, uid_t uid, gid_t gid, mode_t mode, date_t* update) {
 	int file_index = search_file_index_in_dir(dir_entry_list, entry->name);
 	int dir_index = search_dir_index_in_dir(dir_entry_list, entry->name);
 	if (file_index == -1 && dir_index == -1) return -1;
@@ -757,6 +757,8 @@ int update_entry(dir_entry_t *father_dir, dir_entry_t *dir_entry_list, dir_entry
 	entry->uid = uid;
 	entry->gid = gid;
 	entry->mode = mode;
+	if (update != NULL)
+	    memcpy(&entry->update, update, sizeof(date_t));
 
 	if (file_index > -1)
 		memcpy(&dir_entry_list[file_index], entry, sizeof(dir_entry_t));

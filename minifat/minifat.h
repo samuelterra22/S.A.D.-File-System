@@ -75,6 +75,8 @@ struct dir_descriptor {
 } __attribute__((packed));
 typedef struct dir_descriptor dir_descriptor_t;
 
+void tm_to_date(struct tm *tm, date_t *date);
+
 int format(int size);
 
 void init(info_entry_t *info, fat_entry_t **fat_entry, dir_entry_t **root_dir);
@@ -116,9 +118,8 @@ int delete_dir(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *father_d
 int add_entry_in_dir_entry(dir_entry_t *dir, dir_entry_t *dir_entry_list,
 						   dir_entry_t *entry, const info_entry_t *info);
 
-int update_entry(dir_entry_t *father_dir, dir_entry_t *dir_entry_list,
-				 dir_entry_t *entry, const info_entry_t *info,
-				 char *name, uid_t uid, gid_t gid, mode_t mode);
+int update_entry(dir_entry_t *father_dir, dir_entry_t *dir_entry_list, dir_entry_t *entry, const info_entry_t *info,
+				 char *name, uid_t uid, gid_t gid, mode_t mode, date_t* update);
 
 int
 resize_file(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *dir, dir_entry_t *dir_entry_list, dir_entry_t *file,
