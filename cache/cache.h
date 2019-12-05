@@ -35,5 +35,7 @@ int cache_add_entry(cache_entry_t* cache, char* path, dir_entry_t* entry);
 int cache_add_entry_list(cache_entry_t* cache, char* path, dir_entry_t* entry_list);
 int cache_search_entry_list(cache_entry_t* cache, char* path, dir_entry_t** entry_list);
 int cache_search_entry(cache_entry_t* cache, char* path, dir_entry_t* actual_dir_entry);
+int cache_update_entry_list(cache_entry_t* cache, char* path, dir_entry_t* entry_list);
+int cache_update_entry(cache_entry_t* cache, char* path, dir_entry_t* entry);
 
 #endif //SAD_CACHE_H

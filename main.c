@@ -102,35 +102,45 @@ void find_dir_and_entrys(char **bars, int num_of_bars, dir_entry_t **actual_dir_
                          dir_entry_t **actual_dir) {
     *actual_dir_entry = malloc(SECTOR_SIZE);
     memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
+
+    dir_entry_t* prev_dir_entry = malloc(SECTOR_SIZE);
+    memcpy(prev_dir_entry, *actual_dir_entry, SECTOR_SIZE);
+
     *actual_dir = NULL;
     dir_descriptor_t descriptor;
     int has_malloc = 0;
 
+    char path_to_cache[MAXPATHLENGTH];
+    memset(path_to_cache, 0, MAXPATHLENGTH);
+
     for (int i = 0; i < num_of_bars; i++) {
 #ifdef CACHE_ENABLE
-        int execute_search = 0;
-
-        int cache_return_list = cache_search_entry_list(cache, bars[i], &*actual_dir_entry);
-        if (cache_return_list == -1) {
-            search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
-            memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
-            cache_add_entry_list(cache, bars[i], *actual_dir_entry);
-            execute_search = 1;
-        }
+        strcat(path_to_cache, "/");
+        strcat(path_to_cache, bars[i]);
 
         if (has_malloc == 0) {
             *actual_dir = malloc(sizeof(dir_entry_t));
             has_malloc = 1;
         }
 
-        int cache_return_entry = cache_search_entry(cache, bars[i], *actual_dir);
-        if (cache_return_entry == -1) {
-            if (execute_search == 0) {
-                search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
-            }
-            memcpy(*actual_dir, &descriptor.dir_infos, sizeof(dir_entry_t));
-            cache_add_entry(cache, bars[i], *actual_dir);
+        int cache_return_list = cache_search_entry_list(cache, path_to_cache, &*actual_dir_entry);
+        int cache_return_entry = cache_search_entry(cache, path_to_cache, *actual_dir);
+
+        if (cache_return_list == -1 || cache_return_entry == -1) {
+            search_dir_entry(prev_dir_entry, &info_sd, bars[i], &descriptor);
         }
+
+        if (cache_return_list == -1) {
+            memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
+            cache_add_entry_list(cache, path_to_cache, *actual_dir_entry);
+        }
+
+        if (cache_return_entry == -1) {
+            memcpy(*actual_dir, &descriptor.dir_infos, sizeof(dir_entry_t));
+            cache_add_entry(cache, path_to_cache, *actual_dir);
+        }
+
+        memcpy(prev_dir_entry, *actual_dir_entry, SECTOR_SIZE);
 #else
         search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
         memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
@@ -142,6 +152,8 @@ void find_dir_and_entrys(char **bars, int num_of_bars, dir_entry_t **actual_dir_
         memcpy(*actual_dir, &descriptor.dir_infos, sizeof(dir_entry_t));
 #endif
     }
+
+    free(prev_dir_entry);
 }
 
 /**
@@ -155,13 +167,20 @@ void find_dir_entrys(char **bars, int num_of_bars, dir_entry_t **actual_dir_entr
     memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
     dir_descriptor_t descriptor;
 
+    char path_to_cache[MAXPATHLENGTH];
+    memset(path_to_cache, 0, MAXPATHLENGTH);
+
     for (int i = 0; i < num_of_bars; i++) {
 #ifdef CACHE_ENABLE
-        int cache_return = cache_search_entry_list(cache, bars[i], &*actual_dir_entry);
+        strcat(path_to_cache, "/");
+        strcat(path_to_cache, bars[i]);
+
+        int cache_return = cache_search_entry_list(cache, path_to_cache, &*actual_dir_entry);
         if (cache_return == -1) {
             search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
             memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
-            cache_add_entry_list(cache, bars[i], *actual_dir_entry);
+
+            cache_add_entry_list(cache, path_to_cache, *actual_dir_entry);
         }
 #else
         search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
@@ -421,6 +440,17 @@ int sad_mknod(const char *path, mode_t mode, dev_t dev) {
 
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+#ifdef CACHE_ENABLE
+    else {
+        char dir_path[MAXPATHLENGTH];
+        get_path_without_dest(bars, number_of_bars, dir_path);
+        dir_path[strlen(dir_path)-1] = '\0';
+        int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
+        if (update_cache_ok == -1) {
+            cache_add_entry_list(cache, dir_path, actual_dir_entry);
+        }
+    }
+#endif
 
     free(actual_dir_entry);
     delete_path(bars, number_of_bars);
