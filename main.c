@@ -712,6 +712,35 @@ int sad_rename(const char *path, const char *newpath) {
     else if (strcmp(origin_path, "/") == 0)
         memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
 
+#if CACHE_ENABLE == 1
+    if (strcmp(dest_path, "/") != 0) {
+        int update_cache_ok = cache_update_entry_list(cache, dest_path, actual_dir_entry_dest);
+        if (update_cache_ok == -1) {
+            cache_add_entry_list(cache, dest_path, actual_dir_entry_dest);
+        }
+    }
+
+    if (strcmp(origin_path, "/") != 0 ) {
+        int update_cache_ok = cache_update_entry_list(cache, origin_path, actual_dir_entry_src);
+        if (update_cache_ok == -1) {
+            cache_add_entry_list(cache, origin_path, actual_dir_entry_src);
+        }
+    }
+
+    if (S_ISDIR(entry_dest.mode)) {
+        cache_delete_entry_list(cache, path);
+    }
+
+    cache_delete_entry(cache, path);
+
+    cache_add_entry(cache, newpath, &entry_dest);
+
+    if (S_ISDIR(entry_dest.mode)) {
+        cache_add_entry_list(cache, path, actual_dir_entry_dest);
+    }
+
+#endif
+
     return 0;
 }
 
