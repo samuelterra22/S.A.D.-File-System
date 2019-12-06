@@ -18,10 +18,14 @@ extern int fd;
 #define ENDOFCHAIN 0xFFFFFFFF
 
 #define EMPTY_TYPE 0x00
-#define FILE_TYPE 0x01
-#define DIR_TYPE 0x02
 
-typedef uint8_t byte_t;
+#define COMMAND_SIZE 5
+#define COMMAND_POS 0
+#define BLOCK_POS 1
+#define READ_BLOCK 1
+#define WRITE_BLOCK 2
+
+#define UART_READ_TIMEOUT 5000
 
 typedef uint32_t fat_entry_t;
 
