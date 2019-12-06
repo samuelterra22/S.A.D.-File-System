@@ -111,7 +111,7 @@ void find_dir_and_entries(char **bars, int num_of_bars, dir_entry_t **actual_dir
     // sinaliza que alocou memoria para o diretorio atual
     int has_malloc = 0;
 
-#ifdef CACHE_ENABLE
+#if CACHE_ENABLE == 1
     // cria o vetor para armazenar o caminho para usar na cache
     char path_to_cache[MAXPATHLENGTH];
     memset(path_to_cache, 0, MAXPATHLENGTH);
@@ -123,7 +123,7 @@ void find_dir_and_entries(char **bars, int num_of_bars, dir_entry_t **actual_dir
 #endif
     // executa para todas as entradas
     for (int i = 0; i < num_of_bars; i++) {
-#ifdef CACHE_ENABLE
+#if CACHE_ENABLE == 1
         strcat(path_to_cache, "/");
         strcat(path_to_cache, bars[i]);
 
@@ -166,7 +166,7 @@ void find_dir_and_entries(char **bars, int num_of_bars, dir_entry_t **actual_dir
 #endif
     }
 
-#ifdef CACHE_ENABLE
+#if CACHE_ENABLE == 1
     // libera a memoria do vetor passado
     free(prev_dir_entry);
 #endif
@@ -186,13 +186,13 @@ void find_dir_entries(char **bars, int num_of_bars, dir_entry_t **actual_dir_ent
     memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
     dir_descriptor_t descriptor;
 
-#ifdef CACHE_ENABLE
+#if CACHE_ENABLE == 1
     char path_to_cache[MAXPATHLENGTH];
     memset(path_to_cache, 0, MAXPATHLENGTH);
 #endif
 
     for (int i = 0; i < num_of_bars; i++) {
-#ifdef CACHE_ENABLE
+#if CACHE_ENABLE == 1
         strcat(path_to_cache, "/");
         strcat(path_to_cache, bars[i]);
 
@@ -291,7 +291,7 @@ static int sad_getattr(const char *path, struct stat *st) {
     int dir_exist = -1;
     int file_exist = -1;
 
-#ifdef CACHE_ENABLE
+#if CACHE_ENABLE == 1
     int cache_dir_exist = cache_search_entry(cache, path, &dir_descriptor.dir_infos);
     int cache_file_exist = cache_search_entry(cache, path, &file);
     fprintf(stderr, "Resultados da cache buscando %s - cache_dir_exists: %d; cache_file_exist: %d\n", path, cache_dir_exist, cache_file_exist);
@@ -475,7 +475,7 @@ int sad_mknod(const char *path, mode_t mode, dev_t dev) {
     // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
-#ifdef CACHE_ENABLE
+#if CACHE_ENABLE == 1
     else {
         char dir_path[MAXPATHLENGTH];
         get_path_without_dest(bars, number_of_bars, dir_path);
@@ -526,7 +526,7 @@ int sad_mkdir(const char *path, mode_t mode) {
     // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
-#ifdef CACHE_ENABLE
+#if CACHE_ENABLE == 1
     else {
         char dir_path[MAXPATHLENGTH];
         get_path_without_dest(bars, number_of_bars, dir_path);
@@ -569,7 +569,7 @@ int sad_unlink(const char *path) {
     // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
-#ifdef CACHE_ENABLE
+#if CACHE_ENABLE == 1
     else {
         // update dir entry with file mode 0 in cache
         char dir_path[MAXPATHLENGTH];
@@ -615,7 +615,7 @@ int sad_rmdir(const char *path) {
     // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
-#ifdef CACHE_ENABLE
+#if CACHE_ENABLE == 1
     else {
         // update dir entry with file mode 0 in cache
         char dir_path[MAXPATHLENGTH];
@@ -743,7 +743,7 @@ int sad_chmod(const char *path, mode_t mode) {
     // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
-#ifdef CACHE_ENABLE
+#if CACHE_ENABLE == 1
     else {
         // update dir entry with file mode 0 in cache
         char dir_path[MAXPATHLENGTH];
@@ -796,7 +796,7 @@ int sad_chown(const char *path, uid_t uid, gid_t gid) {
     // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
-#ifdef CACHE_ENABLE
+#if CACHE_ENABLE == 1
     else {
         // update dir entry with file mode 0 in cache
         char dir_path[MAXPATHLENGTH];
@@ -847,7 +847,7 @@ int sad_truncate(const char *path, off_t newsize) {
     // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
-#ifdef CACHE_ENABLE
+#if CACHE_ENABLE == 1
     else {
         // update dir entry with file mode 0 in cache
         char dir_path[MAXPATHLENGTH];
@@ -900,7 +900,7 @@ int sad_utime(const char *path, struct utimbuf *ubuf) {
     // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
-#ifdef CACHE_ENABLE
+#if CACHE_ENABLE == 1
     else {
         // update dir entry with file mode 0 in cache
         char dir_path[MAXPATHLENGTH];
@@ -954,7 +954,7 @@ int sad_write(const char *path, const char *buffer, size_t size, off_t offset,
     // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
-#ifdef CACHE_ENABLE
+#if CACHE_ENABLE == 1
     else {
         // update dir entry with file mode 0 in cache
         char dir_path[MAXPATHLENGTH];
@@ -1068,7 +1068,7 @@ int main(int argc, char *argv[]) {
 
     // inicia o sistema de arquivos do cartao (carrega os valores para memoria)
     init(&info_sd, &fat, &root_entry);
-#ifdef CACHE_ENABLE
+#if CACHE_ENABLE == 1
     init_cache(cache);
 #endif
 
