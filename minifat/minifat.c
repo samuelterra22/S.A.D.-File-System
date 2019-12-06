@@ -9,10 +9,8 @@
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <time.h>
 #include <sys/stat.h>
-#include <stdio.h>
 
 int fd;
 
@@ -1018,6 +1016,8 @@ resize_file(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *dir, dir_en
         // calcula a quantidade de bytes usados no ultimo bloco
         int used_in_last_block = SECTOR_SIZE - remain_last_sector;
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCSimplifyInspection"
         do {
             // se a quantidade de bytes usados no ultimo setor for maior que a quantidade de
             // bytes que deve ser diminuido, pula pra baixo, porque nao eh necessario
@@ -1043,6 +1043,7 @@ resize_file(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *dir, dir_en
             // atualiza a tabela fat
             write_fat_table(fat, info->sector_per_fat);
         } while (0);
+#pragma clang diagnostic pop
 
         // pega o tempo atual
         time_t now;

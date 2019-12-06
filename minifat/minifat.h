@@ -87,8 +87,6 @@ int format(int size);
 
 void init(info_entry_t *info, fat_entry_t **fat_entry, dir_entry_t **root_dir);
 
-void release(fat_entry_t **fat_entry, dir_entry_t **root_dir);
-
 int create_empty_file(dir_entry_t *dir, dir_entry_t *dir_entry_list,
 					  info_entry_t *info, fat_entry_t *fat, const char *name,
 					  mode_t mode, uid_t uid, gid_t gid);

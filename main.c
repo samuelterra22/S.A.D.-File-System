@@ -707,7 +707,7 @@ int sad_rename(const char *path, const char *newpath) {
         memcpy(root_entry, actual_dir_entry_dest, SECTOR_SIZE);
     // se o destino for o root e a origem tambem, atualiza o root com a entrada de origem
     else if (strcmp(dest_path, "/") == 0 && strcmp(origin_path, dest_path) == 0)
-        memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
+        memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE); // NOLINT(bugprone-branch-clone)
     // se a origem for root, atualiza o root com a origem
     else if (strcmp(origin_path, "/") == 0)
         memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
