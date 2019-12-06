@@ -226,7 +226,8 @@ void get_path_without_dest(char **bars, int num_bars, char *str) {
     for (int i = 0; i < num_bars - 1; i++) {
         // concatena o nome mais a barra
         strcat(str, bars[i]);
-        strcat(str, "/");
+        if (i != num_bars-2)
+            strcat(str, "/");
     }
 }
 
@@ -478,7 +479,6 @@ int sad_mknod(const char *path, mode_t mode, dev_t dev) {
     else {
         char dir_path[MAXPATHLENGTH];
         get_path_without_dest(bars, number_of_bars, dir_path);
-        dir_path[strlen(dir_path)-1] = '\0';
         int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
         if (update_cache_ok == -1) {
             cache_add_entry_list(cache, dir_path, actual_dir_entry);
@@ -526,6 +526,16 @@ int sad_mkdir(const char *path, mode_t mode) {
     // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+#ifdef CACHE_ENABLE
+    else {
+        char dir_path[MAXPATHLENGTH];
+        get_path_without_dest(bars, number_of_bars, dir_path);
+        int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
+        if (update_cache_ok == -1) {
+            cache_add_entry_list(cache, dir_path, actual_dir_entry);
+        }
+    }
+#endif
 
     // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
     free(actual_dir_entry);
@@ -564,15 +574,13 @@ int sad_unlink(const char *path) {
         // update dir entry with file mode 0 in cache
         char dir_path[MAXPATHLENGTH];
         get_path_without_dest(bars, number_of_bars, dir_path);
-        dir_path[strlen(dir_path)-1] = '\0';
         int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
         if (update_cache_ok == -1) {
             cache_add_entry_list(cache, dir_path, actual_dir_entry);
         }
-
-        // delete file in cache
-        cache_delete_entry(cache, path);
     }
+    // delete file in cache
+    cache_delete_entry(cache, path);
 #endif
 
     // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
@@ -612,16 +620,15 @@ int sad_rmdir(const char *path) {
         // update dir entry with file mode 0 in cache
         char dir_path[MAXPATHLENGTH];
         get_path_without_dest(bars, number_of_bars, dir_path);
-        dir_path[strlen(dir_path)-1] = '\0';
         int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
         if (update_cache_ok == -1) {
             cache_add_entry_list(cache, dir_path, actual_dir_entry);
         }
-
-        // delete file in cache
-        cache_delete_entry(cache, path);
-        cache_delete_entry_list(cache, path);
     }
+
+    // delete file in cache
+    cache_delete_entry(cache, path);
+    cache_delete_entry_list(cache, path);
 #endif
 
     // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
@@ -736,6 +743,19 @@ int sad_chmod(const char *path, mode_t mode) {
     // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+#ifdef CACHE_ENABLE
+    else {
+        // update dir entry with file mode 0 in cache
+        char dir_path[MAXPATHLENGTH];
+        get_path_without_dest(bars, number_of_bars, dir_path);
+        int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
+        if (update_cache_ok == -1) {
+            cache_add_entry_list(cache, dir_path, actual_dir_entry);
+        }
+    }
+    // update file fat entry
+    cache_update_entry(cache, path, &entry_src);
+#endif
 
     // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
     delete_path(bars, number_of_bars);
@@ -776,6 +796,19 @@ int sad_chown(const char *path, uid_t uid, gid_t gid) {
     // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+#ifdef CACHE_ENABLE
+    else {
+        // update dir entry with file mode 0 in cache
+        char dir_path[MAXPATHLENGTH];
+        get_path_without_dest(bars, number_of_bars, dir_path);
+        int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
+        if (update_cache_ok == -1) {
+            cache_add_entry_list(cache, dir_path, actual_dir_entry);
+        }
+    }
+    // update file fat entry
+    cache_update_entry(cache, path, &entry);
+#endif
 
     // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
     delete_path(bars, number_of_bars);
@@ -814,6 +847,19 @@ int sad_truncate(const char *path, off_t newsize) {
     // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+#ifdef CACHE_ENABLE
+    else {
+        // update dir entry with file mode 0 in cache
+        char dir_path[MAXPATHLENGTH];
+        get_path_without_dest(bars, number_of_bars, dir_path);
+        int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
+        if (update_cache_ok == -1) {
+            cache_add_entry_list(cache, dir_path, actual_dir_entry);
+        }
+    }
+    // update file fat entry
+    cache_update_entry(cache, path, &file);
+#endif
 
     // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
     delete_path(bars, number_of_bars);
@@ -854,6 +900,19 @@ int sad_utime(const char *path, struct utimbuf *ubuf) {
     // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+#ifdef CACHE_ENABLE
+    else {
+        // update dir entry with file mode 0 in cache
+        char dir_path[MAXPATHLENGTH];
+        get_path_without_dest(bars, number_of_bars, dir_path);
+        int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
+        if (update_cache_ok == -1) {
+            cache_add_entry_list(cache, dir_path, actual_dir_entry);
+        }
+    }
+    // update file fat entry
+    cache_update_entry(cache, path, &entry);
+#endif
 
     // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
     delete_path(bars, number_of_bars);
@@ -895,6 +954,19 @@ int sad_write(const char *path, const char *buffer, size_t size, off_t offset,
     // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+#ifdef CACHE_ENABLE
+    else {
+        // update dir entry with file mode 0 in cache
+        char dir_path[MAXPATHLENGTH];
+        get_path_without_dest(bars, number_of_bars, dir_path);
+        int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
+        if (update_cache_ok == -1) {
+            cache_add_entry_list(cache, dir_path, actual_dir_entry);
+        }
+    }
+    // update file fat entry
+    cache_update_entry(cache, path, &file);
+#endif
 
     // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
     delete_path(bars, number_of_bars);

@@ -1,3 +1,6 @@
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma ide diagnostic ignored "cert-msc30-c"
 //
 // Created by arthur on 05/12/2019.
 //
@@ -16,7 +19,7 @@ int search_next_free_input(cache_entry_t* cache) {
     return -1;
 }
 
-int cache_search_entry_list_index(cache_entry_t* cache, char* path) {
+int cache_search_entry_list_index(cache_entry_t* cache, const char *path) {
     for(int i = 0; i < CACHE_MAX_SIZE; i++) {
         if (cache[i].is_valid == TRUE && strcmp(path, cache[i].path) == 0 && cache[i].type == CACHE_ENTRY_LIST) {
             return i;
@@ -25,7 +28,7 @@ int cache_search_entry_list_index(cache_entry_t* cache, char* path) {
     return -1;
 }
 
-int cache_search_entry_index(cache_entry_t* cache, char* path) {
+int cache_search_entry_index(cache_entry_t* cache, const char *path) {
     for(int i = 0; i < CACHE_MAX_SIZE; i++) {
         if (cache[i].is_valid == TRUE && strcmp(path, cache[i].path) == 0 && cache[i].type == CACHE_ENTRY) {
             return i;
@@ -40,7 +43,7 @@ void init_cache(cache_entry_t* cache) {
     }
 }
 
-int cache_add_entry(cache_entry_t* cache, char* path, dir_entry_t* entry) {
+int cache_add_entry(cache_entry_t* cache, const char *path, dir_entry_t* entry) {
     int get_next_entry = search_next_free_input(cache);
     if (get_next_entry == -1) {
         get_next_entry = rand() % CACHE_MAX_SIZE;
@@ -54,7 +57,7 @@ int cache_add_entry(cache_entry_t* cache, char* path, dir_entry_t* entry) {
     return 1;
 }
 
-int cache_add_entry_list(cache_entry_t* cache, char* path, dir_entry_t* entry_list) {
+int cache_add_entry_list(cache_entry_t* cache, const char *path, dir_entry_t* entry_list) {
     int get_next_entry = search_next_free_input(cache);
     if (get_next_entry == -1) {
         get_next_entry = rand() % CACHE_MAX_SIZE;
@@ -70,7 +73,7 @@ int cache_add_entry_list(cache_entry_t* cache, char* path, dir_entry_t* entry_li
     return 1;
 }
 
-int cache_search_entry_list(cache_entry_t* cache, char* path, dir_entry_t** actual_dir_entry) {
+int cache_search_entry_list(cache_entry_t* cache, const char *path, dir_entry_t** actual_dir_entry) {
     for(int i = 0; i < CACHE_MAX_SIZE; i++) {
         if (cache[i].is_valid == TRUE && strcmp(path, cache[i].path) == 0 && cache[i].type == CACHE_ENTRY_LIST) {
             memcpy(*actual_dir_entry, cache[i].data.dir_entry_list, SECTOR_SIZE);
@@ -83,7 +86,7 @@ int cache_search_entry_list(cache_entry_t* cache, char* path, dir_entry_t** actu
     return -1;
 }
 
-int cache_search_entry(cache_entry_t* cache, char* path, dir_entry_t* actual_dir_entry) {
+int cache_search_entry(cache_entry_t* cache, const char *path, dir_entry_t* actual_dir_entry) {
     for(int i = 0; i < CACHE_MAX_SIZE; i++) {
         if (cache[i].is_valid == TRUE && strcmp(path, cache[i].path) == 0 && cache[i].type == CACHE_ENTRY) {
             memcpy(actual_dir_entry, &cache[i].data.dir_entry, sizeof(dir_entry_t));
@@ -96,7 +99,7 @@ int cache_search_entry(cache_entry_t* cache, char* path, dir_entry_t* actual_dir
     return -1;
 }
 
-int cache_update_entry_list(cache_entry_t* cache, char* path, dir_entry_t* entry_list) {
+int cache_update_entry_list(cache_entry_t* cache, const char *path, dir_entry_t* entry_list) {
     int index_in_cache = cache_search_entry_list_index(cache, path);
     if (index_in_cache == -1) return -1;
 
@@ -108,7 +111,7 @@ int cache_update_entry_list(cache_entry_t* cache, char* path, dir_entry_t* entry
     return 1;
 }
 
-int cache_update_entry(cache_entry_t* cache, char* path, dir_entry_t* entry) {
+int cache_update_entry(cache_entry_t* cache, const char *path, dir_entry_t* entry) {
     int index_in_cache = cache_search_entry_index(cache, path);
     if (index_in_cache == -1) return -1;
 
@@ -120,7 +123,7 @@ int cache_update_entry(cache_entry_t* cache, char* path, dir_entry_t* entry) {
     return 1;
 }
 
-int cache_delete_entry(cache_entry_t* cache, char* path) {
+int cache_delete_entry(cache_entry_t* cache, const char *path) {
     int index_in_cache = cache_search_entry_index(cache, path);
     if (index_in_cache == -1) return -1;
 
@@ -129,7 +132,7 @@ int cache_delete_entry(cache_entry_t* cache, char* path) {
     return 1;
 }
 
-int cache_delete_entry_list(cache_entry_t* cache, char* path) {
+int cache_delete_entry_list(cache_entry_t* cache, const char *path) {
     int index_in_cache = cache_search_entry_list_index(cache, path);
     if (index_in_cache == -1) return -1;
 
@@ -138,3 +141,5 @@ int cache_delete_entry_list(cache_entry_t* cache, char* path) {
     return 1;
 }
 
+
+#pragma clang diagnostic pop
