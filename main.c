@@ -35,9 +35,9 @@ cache_entry_t cache[CACHE_MAX_SIZE];
 #endif
 
 /**
- *
- * @param string
- * @return
+ * Conta a quantidade de barras possui um caminho
+ * @param string - caminho do arquivo
+ * @return - A quantidade de barras existentes no caminho
  */
 int num_of_bars(const char *string) {
     int empty_spaces = 0;
@@ -51,9 +51,9 @@ int num_of_bars(const char *string) {
 }
 
 /**
- *
- * @param string
- * @return
+ * Gera um vetor com cada sub-entrada de um caminho
+ * @param string - caminho
+ * @return vetor de string com as sub-entradas
  */
 char **explode_path(const char *string) {
     const char s[2] = "/";
@@ -81,9 +81,9 @@ char **explode_path(const char *string) {
 }
 
 /**
- *
- * @param path
- * @param size
+ * Destroi o vetor de caminho criado
+ * @param path - vetor com as sub-entradas
+ * @param size - tamanho do vetor
  */
 void delete_path(char **path, int size) {
     for (int i = 0; i < size; i++)
@@ -92,27 +92,36 @@ void delete_path(char **path, int size) {
 }
 
 /**
- *
- * @param bars
- * @param num_of_bars
- * @param actual_dir_entry
- * @param actual_dir
+ * Busca a entrada e um vetor de entradas a partir do diretorio raiz
+ * @param bars - vetor de sub-entradas
+ * @param num_of_bars - numero de sub-entradas
+ * @param actual_dir_entry - lista de entradas atual
+ * @param actual_dir - entrada atual
  */
-void find_dir_and_entrys(char **bars, int num_of_bars, dir_entry_t **actual_dir_entry,
-                         dir_entry_t **actual_dir) {
+void find_dir_and_entries(char **bars, int num_of_bars, dir_entry_t **actual_dir_entry,
+                          dir_entry_t **actual_dir) {
+    // aloca o vetor de entradas atual
     *actual_dir_entry = malloc(SECTOR_SIZE);
+    // copia o diretorio raiz para o vetor
     memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
 
-    dir_entry_t* prev_dir_entry = malloc(SECTOR_SIZE);
-    memcpy(prev_dir_entry, *actual_dir_entry, SECTOR_SIZE);
-
+    // atribui NULL (root) para a entrada atual
     *actual_dir = NULL;
     dir_descriptor_t descriptor;
+    // sinaliza que alocou memoria para o diretorio atual
     int has_malloc = 0;
 
+#ifdef CACHE_ENABLE
+    // cria o vetor para armazenar o caminho para usar na cache
     char path_to_cache[MAXPATHLENGTH];
     memset(path_to_cache, 0, MAXPATHLENGTH);
 
+    // aloca um vetor de entradas para armazenar os valores da rodada passada
+    dir_entry_t* prev_dir_entry = malloc(SECTOR_SIZE);
+    // copia com o valor atual
+    memcpy(prev_dir_entry, *actual_dir_entry, SECTOR_SIZE);
+#endif
+    // executa para todas as entradas
     for (int i = 0; i < num_of_bars; i++) {
 #ifdef CACHE_ENABLE
         strcat(path_to_cache, "/");
@@ -142,33 +151,45 @@ void find_dir_and_entrys(char **bars, int num_of_bars, dir_entry_t **actual_dir_
 
         memcpy(prev_dir_entry, *actual_dir_entry, SECTOR_SIZE);
 #else
+        // busca o diretorio do nome atual com base no vetor de entradas do diretorio passado
         search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
+        // copia para o vetor de entradas atual
         memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
 
+        // caso nao alocou a entrada atual, aloca
         if (has_malloc == 0) {
             *actual_dir = malloc(sizeof(dir_entry_t));
             has_malloc = 1;
         }
+        // copia para a entrada atual o valor buscado
         memcpy(*actual_dir, &descriptor.dir_infos, sizeof(dir_entry_t));
 #endif
     }
 
+#ifdef CACHE_ENABLE
+    // libera a memoria do vetor passado
     free(prev_dir_entry);
+#endif
+
 }
 
 /**
- *
- * @param bars
- * @param num_of_bars
- * @param actual_dir_entry
+ * Busca o vetor de entradas a partir do diretorio raiz
+ * @param bars - vetor de sub-entradas
+ * @param num_of_bars - numero de sub-entradas
+ * @param actual_dir_entry - lista de entradas atual
  */
-void find_dir_entrys(char **bars, int num_of_bars, dir_entry_t **actual_dir_entry) {
+void find_dir_entries(char **bars, int num_of_bars, dir_entry_t **actual_dir_entry) {
+    // aloca o vetor de entradas
     *actual_dir_entry = malloc(SECTOR_SIZE);
+    // copia o vetor de entradas root para o atual
     memcpy(*actual_dir_entry, root_entry, SECTOR_SIZE);
     dir_descriptor_t descriptor;
 
+#ifdef CACHE_ENABLE
     char path_to_cache[MAXPATHLENGTH];
     memset(path_to_cache, 0, MAXPATHLENGTH);
+#endif
 
     for (int i = 0; i < num_of_bars; i++) {
 #ifdef CACHE_ENABLE
@@ -183,32 +204,36 @@ void find_dir_entrys(char **bars, int num_of_bars, dir_entry_t **actual_dir_entr
             cache_add_entry_list(cache, path_to_cache, *actual_dir_entry);
         }
 #else
+        // busca a entrada de nome bars[i] a partir do vetor de entradas atual
         search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
+        // copia o vetor de entradas obtido para o atual
         memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
 #endif
     }
 }
 
 /**
- *
- * @param bars
- * @param num_bars
- * @param str
+ * Cria um vetor de caminho sem o destino
+ * @param bars - vetor de nomes dos caminhos intermediarios
+ * @param num_bars - numero de entradas
+ * @param str - vetor final
  */
 void get_path_without_dest(char **bars, int num_bars, char *str) {
+    // limpa o caminho e concatena a barra inicial
     memset(str, 0, MAXPATHLENGTH);
     strcat(str, "/");
 
     for (int i = 0; i < num_bars - 1; i++) {
+        // concatena o nome mais a barra
         strcat(str, bars[i]);
         strcat(str, "/");
     }
 }
 
 /**
- *
- * @param date
- * @return
+ * Converte o tipo date_t para o time_t
+ * @param date - data
+ * @return data em time_t
  */
 time_t date_to_time(date_t *date) {
     time_t raw_time;
@@ -239,6 +264,7 @@ time_t date_to_time(date_t *date) {
  * NULL if the file is open.
  *****************************************************************************/
 static int sad_getattr(const char *path, struct stat *st) {
+    // se for o diretorio root
     if (strcmp(path, "/") == 0) {
         st->st_uid = getuid();
         st->st_gid = getgid();
@@ -250,11 +276,13 @@ static int sad_getattr(const char *path, struct stat *st) {
         return 0;
     }
 
+    // conta a quantidade de barras existe e faz o split do caminho
     int number_of_bars = num_of_bars(path);
     char **bars = explode_path(path);
 
+    // busca o vetor de entradas atual
     dir_entry_t *actual_dir;
-    find_dir_entrys(bars, number_of_bars - 1, &actual_dir);
+    find_dir_entries(bars, number_of_bars - 1, &actual_dir);
 
     dir_descriptor_t dir_descriptor;
     dir_entry_t file;
@@ -290,11 +318,14 @@ static int sad_getattr(const char *path, struct stat *st) {
         file_exist = 1;
     }
 #else
+    // busca no vetor de entradas atual se existe um diretorio com o nome final do caminho
     dir_exist = search_dir_entry(actual_dir, &info_sd, bars[number_of_bars - 1],
                                  &dir_descriptor);
+    // busca no vetor de entradas atual se existe um arquivo com o nome final do caminho
     file_exist = search_file_in_dir(actual_dir, bars[number_of_bars - 1], &file);
 #endif
 
+    // preenche a struct st com as informacoes lidas do sd
     if (dir_exist == 1) {
         st->st_uid = dir_descriptor.dir_infos.uid;
         st->st_gid = dir_descriptor.dir_infos.gid;
@@ -313,9 +344,11 @@ static int sad_getattr(const char *path, struct stat *st) {
         st->st_nlink = 1;
         st->st_size = file.size;
     } else {
+        // caso nao exista, envia um codigo de erro
         return -ENOENT;
     }
 
+    // desaloca o vetor de entradas e os o vetor de caminhos
     free(actual_dir);
     delete_path(bars, number_of_bars);
     return 0;
@@ -338,8 +371,12 @@ static int sad_getattr(const char *path, struct stat *st) {
  *****************************************************************************/
 static int sad_readdir(const char *path, void *buffer, fuse_fill_dir_t filler,
                        off_t offset, struct fuse_file_info *fi) {
+
+    // adiciona as entradas do diretorio atual e do pai
     filler(buffer, ".", NULL, 0); /* Current Directory */
     filler(buffer, "..", NULL, 0); /* Parent Directory */
+
+    // se for o diretorio pai, busca so no root_entry ja salvo no pc
     if (strcmp("/", path) == 0) {
         for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
             if (root_entry[i].mode != EMPTY_TYPE) {
@@ -349,29 +386,24 @@ static int sad_readdir(const char *path, void *buffer, fuse_fill_dir_t filler,
         return 0;
     }
 
+    // conta a quantidade de barras existe e faz o split do caminho
     int number_of_bars = num_of_bars(path);
     char **bars = explode_path(path);
 
+    // busca o vetor de entradas atual
     dir_entry_t *actual_dir_entry;
-    find_dir_entrys(bars, number_of_bars, &actual_dir_entry);
+    find_dir_entries(bars, number_of_bars, &actual_dir_entry);
 
+    // insere no buffer as entradas do diretorio atual
     for (unsigned long i = 0; i < DIRENTRYCOUNT; i++) {
         if (actual_dir_entry[i].mode != EMPTY_TYPE) {
             filler(buffer, actual_dir_entry[i].name, NULL, 0);
         }
     }
 
+    // desaloca o vetor de entradas e os o vetor de caminhos
     free(actual_dir_entry);
     delete_path(bars, number_of_bars);
-    return 0;
-}
-
-/******************************************************************************
- * Open a file
- *
- * Open flags are available in fi->flags. The following rules apply.
- *****************************************************************************/
-static int sad_open(const char *path, struct fuse_file_info *fi) {
     return 0;
 }
 
@@ -386,33 +418,27 @@ static int sad_open(const char *path, struct fuse_file_info *fi) {
  *****************************************************************************/
 static int sad_read(const char *path, char *buffer, size_t size, off_t offset,
                     struct fuse_file_info *fi) {
+    // conta a quantidade de barras existe e faz o split do caminho
     int number_of_bars = num_of_bars(path);
     char **bars = explode_path(path);
 
+    // busca o vetor de entradas atual
     dir_entry_t *actual_dir_entry;
-    find_dir_entrys(bars, number_of_bars - 1, &actual_dir_entry);
+    find_dir_entries(bars, number_of_bars - 1, &actual_dir_entry);
 
+    // busca a entrada do arquivo no diretorio atual
     dir_entry_t file;
     search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
                        &file);
 
+    // chama a funcao de read do minifat e recebe o total de bytes lidos
     int total_size = read_file(fat, &info_sd, &file, offset, buffer, size);
 
+    // desaloca o vetor de entradas e os o vetor de caminhos
     free(actual_dir_entry);
     delete_path(bars, number_of_bars);
-    return total_size;
-}
 
-/******************************************************************************
- * Read the target of a symbolic link
- *
- * The buffer should be filled with a null terminated string. The buffer size
- * argument includes the space for the terminating null character. If the
- * linkname is too long to fit in the buffer, it should be truncated. The
- * return value should be 0 for success.
- *****************************************************************************/
-int sad_readlink(const char *path, char *link, size_t size) {
-    return 0;
+    return total_size;
 }
 
 /******************************************************************************
@@ -423,21 +449,29 @@ int sad_readlink(const char *path, char *link, size_t size) {
  * called instead.
  *****************************************************************************/
 int sad_mknod(const char *path, mode_t mode, dev_t dev) {
+    // conta a quantidade de barras existe e faz o split do caminho
     int number_of_bars = num_of_bars(path);
     char **bars = explode_path(path);
 
+    // busca o vetor de entradas e a entrada do ultimo diretorio
     dir_entry_t *actual_dir_entry;
     dir_entry_t *actual_dir;
-    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+    find_dir_and_entries(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
+    // cria uma string e a limpa
     char name[MAXNAME];
     memset(name, 0, MAXNAME);
+    // copia o nome para a string
     strcpy(name, bars[number_of_bars - 1]);
 
+    // pega o contexto da libfuse
     struct fuse_context *context = fuse_get_context();
+
+    // chama a funcao de criacao de um arquivo do minifat
     create_empty_file(actual_dir, actual_dir_entry, &info_sd, fat, name, mode,
                       context->uid, context->gid);
 
+    // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 #ifdef CACHE_ENABLE
@@ -452,7 +486,9 @@ int sad_mknod(const char *path, mode_t mode, dev_t dev) {
     }
 #endif
 
+    // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
     free(actual_dir_entry);
+    if (actual_dir != NULL) free(actual_dir);
     delete_path(bars, number_of_bars);
 
     return 0;
@@ -466,26 +502,35 @@ int sad_mknod(const char *path, mode_t mode, dev_t dev) {
  * use mode|S_IFDIR
  *****************************************************************************/
 int sad_mkdir(const char *path, mode_t mode) {
+    // conta a quantidade de barras existe e faz o split do caminho
     int number_of_bars = num_of_bars(path);
     char **bars = explode_path(path);
 
+    // busca o vetor de entradas e a entrada do ultimo diretorio
     dir_entry_t *actual_dir_entry;
     dir_entry_t *actual_dir;
-    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+    find_dir_and_entries(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
+    // cria uma string e a limpa
     char name[MAXNAME];
     memset(name, 0, MAXNAME);
     strcpy(name, bars[number_of_bars - 1]);
 
+    // pega o contexto da libfuse
     struct fuse_context *context = fuse_get_context();
+
+    // chama a funcao de criacao de um diretorio do minifat
     create_empty_dir(actual_dir, actual_dir_entry, &info_sd, fat, name, mode | S_IFDIR,
                      context->uid, context->gid);
 
+    // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 
-    delete_path(bars, number_of_bars);
+    // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
     free(actual_dir_entry);
+    if (actual_dir != NULL) free(actual_dir);
+    delete_path(bars, number_of_bars);
 
     return 0;
 }
@@ -494,19 +539,24 @@ int sad_mkdir(const char *path, mode_t mode) {
  * Remove a file
  *****************************************************************************/
 int sad_unlink(const char *path) {
+    // conta a quantidade de barras existe e faz o split do caminho
     int number_of_bars = num_of_bars(path);
     char **bars = explode_path(path);
 
+    // busca o vetor de entradas e a entrada do ultimo diretorio
     dir_entry_t *actual_dir_entry;
     dir_entry_t *actual_dir;
-    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+    find_dir_and_entries(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
+    // busca a entrada do arquivo no diretorio atual
     dir_entry_t file;
     search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
                        &file);
 
+    // chama a funcao de remover arquivo do minifat
     delete_file(fat, &info_sd, actual_dir, actual_dir_entry, &file);
 
+    // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 #ifdef CACHE_ENABLE
@@ -525,7 +575,9 @@ int sad_unlink(const char *path) {
     }
 #endif
 
+    // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
     delete_path(bars, number_of_bars);
+    if (actual_dir != NULL) free(actual_dir);
     free(actual_dir_entry);
 
     return 0;
@@ -535,19 +587,24 @@ int sad_unlink(const char *path) {
  * Remove a directory
  *****************************************************************************/
 int sad_rmdir(const char *path) {
+    // conta a quantidade de barras existe e faz o split do caminho
     int number_of_bars = num_of_bars(path);
     char **bars = explode_path(path);
 
+    // busca o vetor de entradas e a entrada do ultimo diretorio
     dir_entry_t *actual_dir_entry;
     dir_entry_t *actual_dir;
-    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+    find_dir_and_entries(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
+    // busca a entrada do diretorio no diretorio atual
     dir_descriptor_t dirDescriptor;
     search_dir_entry(actual_dir_entry, &info_sd, bars[number_of_bars - 1],
                      &dirDescriptor);
 
+    // chama a funcao de remover arquivo do minifat
     delete_dir(fat, &info_sd, actual_dir, actual_dir_entry, &dirDescriptor.dir_infos);
 
+    // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 #ifdef CACHE_ENABLE
@@ -567,16 +624,11 @@ int sad_rmdir(const char *path) {
     }
 #endif
 
+    // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
     delete_path(bars, number_of_bars);
+    if (actual_dir != NULL) free(actual_dir);
     free(actual_dir_entry);
 
-    return 0;
-}
-
-/******************************************************************************
- * Create a symbolic link
- *****************************************************************************/
-int sad_symlink(const char *path, const char *link) {
     return 0;
 }
 
@@ -590,66 +642,69 @@ int sad_symlink(const char *path, const char *link) {
  * deleted.
  *****************************************************************************/
 int sad_rename(const char *path, const char *newpath) {
+    // conta a quantidade de barras existe e faz o split do caminho de origem
     int number_of_bars_src = num_of_bars(path);
     char **bars_src = explode_path(path);
 
+    // conta a quantidade de barras existe e faz o split do caminho de destino
     int number_of_bars_dest = num_of_bars(newpath);
     char **bars_dest = explode_path(newpath);
 
+    // busca o vetor de entradas e a entrada do ultimo diretorio de origem
     dir_entry_t *actual_dir_entry_src;
     dir_entry_t *actual_dir_src;
-    find_dir_and_entrys(bars_src, number_of_bars_src - 1, &actual_dir_entry_src,
-                        &actual_dir_src);
+    find_dir_and_entries(bars_src, number_of_bars_src - 1, &actual_dir_entry_src,
+                         &actual_dir_src);
 
+    // busca o vetor de entradas e a entrada do ultimo diretorio de destino
     dir_entry_t *actual_dir_entry_dest;
     dir_entry_t *actual_dir_dest;
-    find_dir_and_entrys(bars_dest, number_of_bars_dest - 1, &actual_dir_entry_dest,
-                        &actual_dir_dest);
+    find_dir_and_entries(bars_dest, number_of_bars_dest - 1, &actual_dir_entry_dest,
+                         &actual_dir_dest);
 
+    // busca a entrada de origem
     dir_entry_t entry_src;
     search_entry_in_dir(actual_dir_entry_src, bars_src[number_of_bars_src - 1],
                         &entry_src);
 
+    // faz uma copia da entrada de origem para a entrada de destino
     dir_entry_t entry_dest;
     memcpy(&entry_dest, &entry_src, sizeof(dir_entry_t));
 
+    // troca o nome da entrada de destino
     strcpy(entry_dest.name, bars_dest[number_of_bars_dest - 1]);
+    // adiciona a entrada de destino do diretorio de destino
     add_entry_in_dir_entry(actual_dir_dest, actual_dir_entry_dest, &entry_dest, &info_sd);
 
     char origin_path[MAXPATHLENGTH];
     char dest_path[MAXPATHLENGTH];
 
+    // gera o caminho sem o nome final de origem e destino
     get_path_without_dest(bars_src, number_of_bars_src, origin_path);
     get_path_without_dest(bars_dest, number_of_bars_dest, dest_path);
 
-    fprintf(stderr, "scr: %s\n", origin_path);
-    fprintf(stderr, "dest: %s\n", dest_path);
-
+    // compara esses caminhos, se forem igual, tem que atualizar o vetor de origem pelo vetor de entrada
     if (strcmp(origin_path, dest_path) == 0) {
         memcpy(actual_dir_entry_src, actual_dir_entry_dest, SECTOR_SIZE);
+        // se ambos forem do mesmo subdiretorio, atualizar a entrada do diretorio de origem pelo de destino
         if (actual_dir_dest != NULL)
             memcpy(actual_dir_src, actual_dir_dest, sizeof(dir_entry_t));
     }
 
+    // atualiza a entrada de origem para deletada
     update_entry(actual_dir_src, actual_dir_entry_src, &entry_src, &info_sd,
                  entry_src.name, entry_src.uid, entry_src.gid, EMPTY_TYPE, NULL);
 
+    // se o destino for o root e a origem nao, atualiza o root com a entrada de destino
     if (strcmp(dest_path, "/") == 0 && strcmp(origin_path, dest_path) != 0)
         memcpy(root_entry, actual_dir_entry_dest, SECTOR_SIZE);
+    // se o destino for o root e a origem tambem, atualiza o root com a entrada de origem
     else if (strcmp(dest_path, "/") == 0 && strcmp(origin_path, dest_path) == 0)
         memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
-    else if (strcmp(origin_path, "/") == 0 && strcmp(origin_path, dest_path) != 0)
-        memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
-    else if (strcmp(origin_path, "/") == 0 && strcmp(origin_path, dest_path) == 0)
+    // se a origem for root, atualiza o root com a origem
+    else if (strcmp(origin_path, "/") == 0)
         memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
 
-    return 0;
-}
-
-/******************************************************************************
- * Create a hard link to a file
- *****************************************************************************/
-int sad_link(const char *path, const char *newpath) {
     return 0;
 }
 
@@ -660,22 +715,32 @@ int sad_link(const char *path, const char *newpath) {
  * NULL if the file is open.
  *****************************************************************************/
 int sad_chmod(const char *path, mode_t mode) {
+    // conta a quantidade de barras existe e faz o split do caminho
     int number_of_bars = num_of_bars(path);
     char **bars = explode_path(path);
 
+    // busca o vetor de entradas e a entrada do ultimo diretorio
     dir_entry_t *actual_dir_entry;
     dir_entry_t *actual_dir;
-    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+    find_dir_and_entries(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
+    // busca a entrada no diretorio atual
     dir_entry_t entry_src;
     search_entry_in_dir(actual_dir_entry, bars[number_of_bars - 1],
                         &entry_src);
 
+    // atualiza a entrada usando a funcao do minifat
     update_entry(actual_dir, actual_dir_entry, &entry_src, &info_sd,
                  entry_src.name, entry_src.uid, entry_src.gid, mode, NULL);
 
+    // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+
+    // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
+    delete_path(bars, number_of_bars);
+    if (actual_dir != NULL) free(actual_dir);
+    free(actual_dir_entry);
 
     return 0;
 }
@@ -690,23 +755,32 @@ int sad_chmod(const char *path, mode_t mode) {
  * the setuid and setgid bits.
  *****************************************************************************/
 int sad_chown(const char *path, uid_t uid, gid_t gid) {
-
+    // conta a quantidade de barras existe e faz o split do caminho
     int number_of_bars = num_of_bars(path);
     char **bars = explode_path(path);
 
+    // busca o vetor de entradas e a entrada do ultimo diretorio
     dir_entry_t *actual_dir_entry;
     dir_entry_t *actual_dir;
-    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+    find_dir_and_entries(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
+    // busca a entrada no diretorio atual
     dir_entry_t entry;
     search_entry_in_dir(actual_dir_entry, bars[number_of_bars - 1],
                         &entry);
 
+    // atualiza a entrada usando a funcao do minifat
     update_entry(actual_dir, actual_dir_entry, &entry, &info_sd,
                  entry.name, uid, gid, entry.mode, NULL);
 
+    // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+
+    // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
+    delete_path(bars, number_of_bars);
+    if (actual_dir != NULL) free(actual_dir);
+    free(actual_dir_entry);
 
     return 0;
 }
@@ -721,21 +795,29 @@ int sad_chown(const char *path, uid_t uid, gid_t gid) {
  * the setuid and setgid bits.
  *****************************************************************************/
 int sad_truncate(const char *path, off_t newsize) {
+    // conta a quantidade de barras existe e faz o split do caminho
     int number_of_bars = num_of_bars(path);
     char **bars = explode_path(path);
 
+    // busca o vetor de entradas e a entrada do ultimo diretorio
     dir_entry_t *actual_dir_entry;
     dir_entry_t *actual_dir;
-    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+    find_dir_and_entries(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
+    // busca a entrada do arquivo no diretorio atual
     dir_entry_t file;
     search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1], &file);
+
+    // muda o tamanho do arquivo usando a funcao do minifat
     resize_file(fat, &info_sd, actual_dir, actual_dir_entry, &file, newsize);
 
+    // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 
+    // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
     delete_path(bars, number_of_bars);
+    if (actual_dir != NULL) free(actual_dir);
     free(actual_dir_entry);
 
     return 0;
@@ -745,27 +827,38 @@ int sad_truncate(const char *path, off_t newsize) {
  * Change file last access and modification times
  *****************************************************************************/
 int sad_utime(const char *path, struct utimbuf *ubuf) {
+    // cria a data de modificacao em date_t
     struct tm *timeinfo;
     timeinfo = localtime(&ubuf->modtime);
     date_t mod_time;
     tm_to_date(timeinfo, &mod_time);
 
+    // conta a quantidade de barras existe e faz o split do caminho
     int number_of_bars = num_of_bars(path);
     char **bars = explode_path(path);
 
+    // busca o vetor de entradas e a entrada do ultimo diretorio
     dir_entry_t *actual_dir_entry;
     dir_entry_t *actual_dir;
-    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+    find_dir_and_entries(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
+    // busca a entrada do arquivo no diretorio atual
     dir_entry_t entry;
     search_entry_in_dir(actual_dir_entry, bars[number_of_bars - 1],
                         &entry);
 
+    // atualiza a entrada usando a funcao do minifat
     update_entry(actual_dir, actual_dir_entry, &entry, &info_sd,
                  entry.name, entry.uid, entry.gid, entry.mode, &mod_time);
 
+    // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
+
+    // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
+    delete_path(bars, number_of_bars);
+    if (actual_dir != NULL) free(actual_dir);
+    free(actual_dir_entry);
 
     return 0;
 }
@@ -781,116 +874,34 @@ int sad_utime(const char *path, struct utimbuf *ubuf) {
  *****************************************************************************/
 int sad_write(const char *path, const char *buffer, size_t size, off_t offset,
               struct fuse_file_info *fi) {
+    // conta a quantidade de barras existe e faz o split do caminho
     int number_of_bars = num_of_bars(path);
     char **bars = explode_path(path);
 
+    // busca o vetor de entradas e a entrada do ultimo diretorio
     dir_entry_t *actual_dir_entry;
     dir_entry_t *actual_dir;
-    find_dir_and_entrys(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
+    find_dir_and_entries(bars, number_of_bars - 1, &actual_dir_entry, &actual_dir);
 
+    // busca a entrada do arquivo no diretorio atual
     dir_entry_t file;
     search_file_in_dir(actual_dir_entry, bars[number_of_bars - 1],
                        &file);
 
+    // chama a funcao de escrever da minifat
     int total_size = write_file(fat, &info_sd, actual_dir, actual_dir_entry, &file, offset,
                            buffer, size);
 
+    // caso o diretorio atual for root, atualiza a entrada dele
     if (actual_dir == NULL)
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 
+    // desaloca o vetor de entradas, a entrada do diretorio e os o vetor de caminhos
     delete_path(bars, number_of_bars);
+    if (actual_dir != NULL) free(actual_dir);
     free(actual_dir_entry);
+
     return total_size;
-}
-
-/******************************************************************************
- * Get file system statistics
- *
- * The 'f_favail', 'f_fsid' and 'f_flag' fields are ignored
- *****************************************************************************/
-int sad_statfs(const char *path, struct statvfs *statv) {
-    return 0;
-}
-
-/******************************************************************************
- * Possibly flush cached data
- *
- * BIG NOTE: This is not equivalent to fsync(). It's not a request to sync dirty data.
- *
- * Flush is called on each close() of a file descriptor, as opposed to release
- * which is called on the close of the last file descriptor for a file. Under
- * Linux, errors returned by flush() will be passed to userspace as errors from
- * close(), so flush() is a good place to write back any cached dirty data.
- * However, many applications ignore errors on close(), and on non-Linux systems,
- * close() may succeed even if flush() returns an error. For these reasons,
- * filesystems should not assume that errors returned by flush will ever be
- * noticed or even delivered.
- *
- * NOTE: The flush() method may be called more than once for each open(). This
- * happens if more than one file descriptor refers to an open file handle, e.g.
- * due to dup(), dup2() or fork() calls. It is not possible to determine if a
- * flush is final, so each flush should be treated equally. Multiple
- * write-flush sequences are relatively rare, so this shouldn't be a problem.
- *
- * Filesystems shouldn't assume that flush will be called at any particular
- * point. It may be called more times than expected, or not at all.
- ******************************************************************************/
-int sad_flush(const char *path, struct fuse_file_info *fi) {
-    return 0;
-}
-
-/******************************************************************************
- * Release an open file
- *
- * Release is called when there are no more references to an open file: all
- * file descriptors are closed and all memory mappings are unmapped.
- *
- * For every open() call there will be exactly one release() call with the same
- * flags and file handle. It is possible to have a file opened more than once,
- * in which case only the last release will mean, that no more reads/writes will
- * happen on the file. The return value of release is ignored.
- ******************************************************************************/
-int sad_release(const char *path, struct fuse_file_info *fi) {
-    return 0;
-}
-
-/******************************************************************************
- * Synchronize file contents
- *
- * If the datasync parameter is non-zero, then only the user data should be
- * flushed, not the meta data.
- ******************************************************************************/
-int sad_fsync(const char *path, int datasync, struct fuse_file_info *fi) {
-    return 0;
-}
-
-/******************************************************************************
- * Open directory
- *
- * Unless the 'default_permissions' mount option is given, this method should
- * check if opendir is permitted for this directory. Optionally opendir may also
- * return an arbitrary filehandle in the fuse_file_info structure, which will be
- * passed to readdir, releasedir and fsyncdir.
- ******************************************************************************/
-int sad_opendir(const char *path, struct fuse_file_info *fi) {
-    return 0;
-}
-
-/******************************************************************************
- * Release directory
- *****************************************************************************/
-int sad_releasedir(const char *path, struct fuse_file_info *fi) {
-    return 0;
-}
-
-/******************************************************************************
- * Synchronize directory contents
- *
- * If the datasync parameter is non-zero, then only the user data should be
- * flushed, not the meta data
- *****************************************************************************/
-int sad_fsyncdir(const char *path, int datasync, struct fuse_file_info *fi) {
-    return 0;
 }
 
 /******************************************************************************
@@ -912,32 +923,6 @@ void *sad_init(struct fuse_conn_info *conn) {
  *****************************************************************************/
 void sad_destroy(void *userdata) {
     fprintf(stderr, "S.A.D. Filesystem successfully destroyed.");
-}
-
-/******************************************************************************
- * Check file access permissions
- *
- * This will be called for the access() system call. If the
- * 'default_permissions' mount option is given, this method is not called.
- *
- * This method is not called under Linux kernel versions 2.4.x
- *****************************************************************************/
-int sad_access(const char *path, int mask) {
-    return 0;
-}
-
-/******************************************************************************
- *
- *****************************************************************************/
-int sad_ftruncate(const char *path, off_t offset, struct fuse_file_info *fi) {
-    return 0;
-}
-
-/******************************************************************************
- *
- *****************************************************************************/
-int sad_fgetattr(const char *path, struct stat *statbuf, struct fuse_file_info *fi) {
-    return 0;
 }
 
 /******************************************************************************
@@ -964,35 +949,20 @@ int sad_fgetattr(const char *path, struct stat *statbuf, struct fuse_file_info *
  *****************************************************************************/
 static struct fuse_operations sad_operations = {
         .getattr = sad_getattr,
-//        .open = sad_open,
         .read = sad_read,
         .readdir = sad_readdir,
-//        .readlink = sad_readlink,
-//        .getdir = NULL, /* .getdir is deprecated */
         .mknod = sad_mknod,
         .mkdir = sad_mkdir,
         .unlink = sad_unlink,
         .rmdir = sad_rmdir,
-//        .symlink = sad_symlink,
         .rename = sad_rename,
-//        .link = sad_link,
         .chmod = sad_chmod,
         .chown = sad_chown,
         .truncate = sad_truncate,
         .utime = sad_utime,
         .write = sad_write,
-//        .statfs = sad_statfs,
-//        .flush = sad_flush,
-//        .release = sad_release,
-//        .fsync = sad_fsync,
-//        .opendir = sad_opendir,
-//        .releasedir = sad_releasedir,
-//        .fsyncdir = sad_fsyncdir,
         .init = sad_init,
-        .destroy = sad_destroy,
-//        .access = sad_access,
-//        .ftruncate = sad_ftruncate,
-//        .fgetattr = sad_fgetattr
+        .destroy = sad_destroy
 };
 
 /******************************************************************************
@@ -1007,19 +977,21 @@ int main(int argc, char *argv[]) {
     }
 
     //fd = open(virtual_disk, O_RDWR);
+    // abre a porta serial
     fd = serialport_init("/dev/ttyUSB0", 115200);
     serialport_flush(fd);
 
+    // caso seja para formartar o cartao
     if (strcmp(argv[1], "-format") == 0) {
         printf("Formatting disk ..........");
-        //format(386252);
-        //format(38625);
+        // passa a quantidade de blocos a serem usados
         format(300625);
         printf("   disk successfully formatted\n");
 
         return EXIT_SUCCESS;
     }
 
+    // inicia o sistema de arquivos do cartao (carrega os valores para memoria)
     init(&info_sd, &fat, &root_entry);
 #ifdef CACHE_ENABLE
     init_cache(cache);
@@ -1027,6 +999,7 @@ int main(int argc, char *argv[]) {
 
     fprintf(stderr, "Using Fuse library version %d.%d\n", FUSE_MAJOR_VERSION,
             FUSE_MINOR_VERSION);
+    // inicia a minifat
     fuse_status = fuse_main(argc, argv, &sad_operations, NULL);
 
     fprintf(stderr, "fuse_main returned %d\n", fuse_status);
