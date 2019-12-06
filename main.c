@@ -1048,10 +1048,13 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    //fd = open(virtual_disk, O_RDWR);
+#if USING_ARDUINO == 1
     // abre a porta serial
     fd = serialport_init("/dev/ttyUSB0", 115200);
     serialport_flush(fd);
+#else
+    fd = open(virtual_disk, O_RDWR);
+#endif
 
     // caso seja para formartar o cartao
     if (strcmp(argv[1], "-format") == 0) {

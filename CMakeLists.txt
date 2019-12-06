@@ -16,6 +16,7 @@ find_package(FUSE REQUIRED)
 
 include_directories(${FUSE_INCLUDE_DIR})
 add_compile_definitions(CACHE_ENABLE)
+add_compile_definitions(USING_ARDUINO=1)
 
 add_executable(SAD main.c serial/serial.c serial/serial.h minifat/minifat.c minifat/minifat.h cache/cache.c cache/cache.h)
 

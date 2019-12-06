@@ -30,22 +30,17 @@ void tm_to_date(struct tm *tm, date_t *date) {
 	date->seconds = tm->tm_sec;
 }
 
+#if USING_ARDUINO == 0
 /**
  * Write one block in sd card connected in computer
  * @param block
  * @param buffer
  */
 void write_block(uint32_t block, char *buffer) {
-/*    char buffer_write_command[5];
-    buffer_write_command[0] = 2;
-    uint32_t* block_to_write = (uint32_t*) &buffer_write_command[1];
-    *block_to_write = block;
-
-    serialport_write(fd, buffer_write_command, 5);
-    serialport_write(fd, buffer, BLOCK_SIZE);*/
 	lseek(fd, block * BLOCK_SIZE, SEEK_SET);
 	write(fd, buffer, BLOCK_SIZE);
 }
+#endif
 
 /**
  * Function to read one block in Arduino
@@ -53,6 +48,8 @@ void write_block(uint32_t block, char *buffer) {
  * @param buffer
  */
 void read_block(uint32_t block, void *buffer) {
+
+#if USING_ARDUINO == 1
     char buffer_read_command[COMMAND_SIZE];
 
     // cria o quadro para enviar o comando de ler um bloco para o arduino
@@ -63,10 +60,10 @@ void read_block(uint32_t block, void *buffer) {
     memset(buffer, 0, BLOCK_SIZE); // limpa o buffer
     serialport_write(fd, buffer_read_command, COMMAND_SIZE); // send command to read block block
     serialport_read_until(fd, buffer, BLOCK_SIZE, UART_READ_TIMEOUT); // read block and save in buffer
-
-/*
+#else
 	lseek(fd, block * BLOCK_SIZE, SEEK_SET);
-	read(fd, buffer, BLOCK_SIZE);*/
+	read(fd, buffer, BLOCK_SIZE);
+#endif
 }
 
 /**
@@ -78,9 +75,11 @@ void write_sector(uint32_t sector, void *buffer) {
     // calculate first block from sector
 	uint32_t first_block = sector * (SECTOR_SIZE / BLOCK_SIZE);
 
-/*	for (int i = 0; i < SECTOR_SIZE / BLOCK_SIZE; i++) {
+#if USING_ARDUINO == 0
+    for (int i = 0; i < SECTOR_SIZE / BLOCK_SIZE; i++) {
 		write_block(first_block + i, buffer + (i * BLOCK_SIZE));
-	}*/
+	}
+#else
     char buffer_write_command[COMMAND_SIZE];
 
     // send command to write sector
@@ -91,6 +90,7 @@ void write_sector(uint32_t sector, void *buffer) {
     // send command and sector to write
     serialport_write(fd, buffer_write_command, COMMAND_SIZE);
     serialport_write(fd, buffer, SECTOR_SIZE);
+#endif
 }
 
 /**
