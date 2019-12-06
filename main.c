@@ -124,31 +124,38 @@ void find_dir_and_entries(char **bars, int num_of_bars, dir_entry_t **actual_dir
     // executa para todas as entradas
     for (int i = 0; i < num_of_bars; i++) {
 #if CACHE_ENABLE == 1
+        // concatena na string do caminho completo ate o momento
         strcat(path_to_cache, "/");
         strcat(path_to_cache, bars[i]);
 
+        // veririca se a entrada do arquivo esta salva ou nao
         if (has_malloc == 0) {
             *actual_dir = malloc(sizeof(dir_entry_t));
             has_malloc = 1;
         }
 
+        // busca na cache uma entrada para o valor
         int cache_return_list = cache_search_entry_list(cache, path_to_cache, &*actual_dir_entry);
         int cache_return_entry = cache_search_entry(cache, path_to_cache, *actual_dir);
 
+        // caso os valores na cache nao sejam validos, busca no sd
         if (cache_return_list == -1 || cache_return_entry == -1) {
             search_dir_entry(prev_dir_entry, &info_sd, bars[i], &descriptor);
         }
 
+        // caso a cache nao tem o vetor de entradas do diretorio atual, adiciona
         if (cache_return_list == -1) {
             memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
             cache_add_entry_list(cache, path_to_cache, *actual_dir_entry);
         }
 
+        // caso a cache nao tem a entrada do diretorio atual, adiciona
         if (cache_return_entry == -1) {
             memcpy(*actual_dir, &descriptor.dir_infos, sizeof(dir_entry_t));
             cache_add_entry(cache, path_to_cache, *actual_dir);
         }
 
+        // atualiza o vetor de entradas anterior com o novo valor
         memcpy(prev_dir_entry, *actual_dir_entry, SECTOR_SIZE);
 #else
         // busca o diretorio do nome atual com base no vetor de entradas do diretorio passado
@@ -193,14 +200,20 @@ void find_dir_entries(char **bars, int num_of_bars, dir_entry_t **actual_dir_ent
 
     for (int i = 0; i < num_of_bars; i++) {
 #if CACHE_ENABLE == 1
+        // concatena na string do caminho completo ate o momento
         strcat(path_to_cache, "/");
         strcat(path_to_cache, bars[i]);
 
+        // busca na cache uma entrada para o valor
         int cache_return = cache_search_entry_list(cache, path_to_cache, &*actual_dir_entry);
+
+        // caso nao exista na cache
         if (cache_return == -1) {
+            // busca no sd e salva o valor
             search_dir_entry(*actual_dir_entry, &info_sd, bars[i], &descriptor);
             memcpy(*actual_dir_entry, descriptor.entry, SECTOR_SIZE);
 
+            // salva na cache
             cache_add_entry_list(cache, path_to_cache, *actual_dir_entry);
         }
 #else
@@ -292,29 +305,34 @@ static int sad_getattr(const char *path, struct stat *st) {
     int file_exist = -1;
 
 #if CACHE_ENABLE == 1
+    // busca as entradas na cache
     int cache_dir_exist = cache_search_entry(cache, path, &dir_descriptor.dir_infos);
     int cache_file_exist = cache_search_entry(cache, path, &file);
-    fprintf(stderr, "Resultados da cache buscando %s - cache_dir_exists: %d; cache_file_exist: %d\n", path, cache_dir_exist, cache_file_exist);
 
+    // se a entrada de diretorio nao existir na cache
     if (cache_dir_exist == -1) {
-        fprintf(stderr, "Foi buscar no cartao se o diretorio existe\n");
+        // busca o diretorio no sd
         dir_exist = search_dir_entry(actual_dir, &info_sd, bars[number_of_bars - 1],
                                      &dir_descriptor);
+        // se o diretorio existir, salva ele na cache
         if (dir_exist == 1) {
-            fprintf(stderr, "Diretorio existe, vai adicionar na cache\n");
             cache_add_entry(cache, path, &dir_descriptor.dir_infos);
         }
+    // caso a entrada exista na cache, verifica se ela e um diretorio ou nao
     } else if (S_ISDIR(dir_descriptor.dir_infos.mode)){
         dir_exist = 1;
     }
+
+    // se a entrada de arquivo nao existir na cache
     if (cache_file_exist == -1) {
-        fprintf(stderr, "Foi buscar no cartao se o arquivo existe\n");
+        // busca o arquivo no sd
         file_exist = search_file_in_dir(actual_dir, bars[number_of_bars - 1], &file);
 
+        // se o arquivo existir, salva ele na cache
         if (file_exist == 1) {
-            fprintf(stderr, "File existe, vai adicionar na cache\n");
             cache_add_entry(cache, path, &file);
         }
+    // caso a entrada exista na cache, verifica se ela e um arquivo ou nao
     } else if (S_ISREG(file.mode)) {
         file_exist = 1;
     }
@@ -477,9 +495,13 @@ int sad_mknod(const char *path, mode_t mode, dev_t dev) {
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 #if CACHE_ENABLE == 1
     else {
+        // cria um caminho sem o destino
         char dir_path[MAXPATHLENGTH];
         get_path_without_dest(bars, number_of_bars, dir_path);
+
+        // atualiza o vetor de entradas na cache com o novo arquivo incluido
         int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
+        // caso nao atualizou corretamente (nao existe a entrada), adiciona a entrada na cache
         if (update_cache_ok == -1) {
             cache_add_entry_list(cache, dir_path, actual_dir_entry);
         }
@@ -528,9 +550,14 @@ int sad_mkdir(const char *path, mode_t mode) {
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 #if CACHE_ENABLE == 1
     else {
+        // cria um caminho sem o destino
         char dir_path[MAXPATHLENGTH];
         get_path_without_dest(bars, number_of_bars, dir_path);
+
+        // atualiza o vetor de entradas na cache com o novo diretorio criado
         int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
+
+        // caso nao atualizou corretamente (nao existe a entrada), adiciona a entrada na cache
         if (update_cache_ok == -1) {
             cache_add_entry_list(cache, dir_path, actual_dir_entry);
         }
@@ -571,15 +598,19 @@ int sad_unlink(const char *path) {
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 #if CACHE_ENABLE == 1
     else {
-        // update dir entry with file mode 0 in cache
+        // cria um caminho sem o destino
         char dir_path[MAXPATHLENGTH];
         get_path_without_dest(bars, number_of_bars, dir_path);
+
+        // atualiza a cache com o novo vetor de entradas sem o arquivo
         int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
+
+        // caso nao atualizou corretamente (nao existe a entrada), adiciona a entrada na cache
         if (update_cache_ok == -1) {
             cache_add_entry_list(cache, dir_path, actual_dir_entry);
         }
     }
-    // delete file in cache
+    // deleta a entrada da cache
     cache_delete_entry(cache, path);
 #endif
 
@@ -617,16 +648,18 @@ int sad_rmdir(const char *path) {
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 #if CACHE_ENABLE == 1
     else {
-        // update dir entry with file mode 0 in cache
+        // cria um caminho sem o destino
         char dir_path[MAXPATHLENGTH];
         get_path_without_dest(bars, number_of_bars, dir_path);
+
+        // atualiza a cache com o novo vetor de entradas sem o diretorio
         int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
         if (update_cache_ok == -1) {
             cache_add_entry_list(cache, dir_path, actual_dir_entry);
         }
     }
 
-    // delete file in cache
+    // deleta da cache as informacoes do diretorio
     cache_delete_entry(cache, path);
     cache_delete_entry_list(cache, path);
 #endif
@@ -713,28 +746,36 @@ int sad_rename(const char *path, const char *newpath) {
         memcpy(root_entry, actual_dir_entry_src, SECTOR_SIZE);
 
 #if CACHE_ENABLE == 1
+    // verifica o caminho de destino, se for diferente de barra, tem que mudar a cache
     if (strcmp(dest_path, "/") != 0) {
+        // verifica o caminho de destino, se for diferente de barra, tem que mudar a cache
         int update_cache_ok = cache_update_entry_list(cache, dest_path, actual_dir_entry_dest);
         if (update_cache_ok == -1) {
             cache_add_entry_list(cache, dest_path, actual_dir_entry_dest);
         }
     }
 
+    // verifica o caminho de origem, se for diferente de barra, tem que mudar a cache
     if (strcmp(origin_path, "/") != 0 ) {
+        // verifica o caminho de origem, se for diferente de barra, tem que mudar a cache
         int update_cache_ok = cache_update_entry_list(cache, origin_path, actual_dir_entry_src);
         if (update_cache_ok == -1) {
             cache_add_entry_list(cache, origin_path, actual_dir_entry_src);
         }
     }
 
+    // caso o arquivo de origem for um diretorio, remove da cache suas entradas
     if (S_ISDIR(entry_dest.mode)) {
         cache_delete_entry_list(cache, path);
     }
 
+    // deleta da cache a entrada da origem
     cache_delete_entry(cache, path);
 
+    // adiciona a entrada de destino na cache
     cache_add_entry(cache, newpath, &entry_dest);
 
+    // caso o arquivo de destino for um diretorio, adiciona da cache suas entradas
     if (S_ISDIR(entry_dest.mode)) {
         cache_add_entry_list(cache, path, actual_dir_entry_dest);
     }
@@ -774,15 +815,18 @@ int sad_chmod(const char *path, mode_t mode) {
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 #if CACHE_ENABLE == 1
     else {
-        // update dir entry with file mode 0 in cache
+        // cria um caminho sem o destino
         char dir_path[MAXPATHLENGTH];
         get_path_without_dest(bars, number_of_bars, dir_path);
+
+        // atualiza a entrada do arquivo na cache
         int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
+        // caso a atualizacao falhou, adiciona
         if (update_cache_ok == -1) {
             cache_add_entry_list(cache, dir_path, actual_dir_entry);
         }
     }
-    // update file fat entry
+    // atualiza a entrada na cache
     cache_update_entry(cache, path, &entry_src);
 #endif
 
@@ -827,15 +871,18 @@ int sad_chown(const char *path, uid_t uid, gid_t gid) {
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 #if CACHE_ENABLE == 1
     else {
-        // update dir entry with file mode 0 in cache
+        // cria um caminho sem o destino
         char dir_path[MAXPATHLENGTH];
         get_path_without_dest(bars, number_of_bars, dir_path);
+
+        // atualiza a entrada do arquivo na cache
         int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
+        // caso a atualizacao falhou, adiciona
         if (update_cache_ok == -1) {
             cache_add_entry_list(cache, dir_path, actual_dir_entry);
         }
     }
-    // update file fat entry
+    // atualiza a entrada na cache
     cache_update_entry(cache, path, &entry);
 #endif
 
@@ -878,15 +925,18 @@ int sad_truncate(const char *path, off_t newsize) {
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 #if CACHE_ENABLE == 1
     else {
-        // update dir entry with file mode 0 in cache
+        // cria um caminho sem o destino
         char dir_path[MAXPATHLENGTH];
         get_path_without_dest(bars, number_of_bars, dir_path);
+
+        // atualiza a entrada do arquivo na cache
         int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
+        // caso a atualizacao falhou, adiciona
         if (update_cache_ok == -1) {
             cache_add_entry_list(cache, dir_path, actual_dir_entry);
         }
     }
-    // update file fat entry
+    // atualiza a entrada na cache
     cache_update_entry(cache, path, &file);
 #endif
 
@@ -931,15 +981,18 @@ int sad_utime(const char *path, struct utimbuf *ubuf) {
         memcpy(root_entry, actual_dir_entry, SECTOR_SIZE);
 #if CACHE_ENABLE == 1
     else {
-        // update dir entry with file mode 0 in cache
+        // cria um caminho sem o destino
         char dir_path[MAXPATHLENGTH];
         get_path_without_dest(bars, number_of_bars, dir_path);
+
+        // atualiza a entrada do arquivo na cache
         int update_cache_ok = cache_update_entry_list(cache, dir_path, actual_dir_entry);
+        // caso a atualizacao falhou, adiciona
         if (update_cache_ok == -1) {
             cache_add_entry_list(cache, dir_path, actual_dir_entry);
         }
     }
-    // update file fat entry
+    // atualiza a entrada na cache
     cache_update_entry(cache, path, &entry);
 #endif
 
