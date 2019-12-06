@@ -30,7 +30,8 @@ extern int fd;
 typedef uint32_t fat_entry_t;
 
 /**
- *
+ * Estrutura para armazenar a data que será usada para informar
+ * data relacionada a um arquivo/diretório.
  */
 struct date_format {
 	unsigned int day:6;
@@ -43,7 +44,7 @@ struct date_format {
 typedef struct date_format date_t;
 
 /**
- *
+ * Armazena as informações do sistema de arquivo.
  */
 struct info_entry {
 	uint32_t total_block;
@@ -56,7 +57,8 @@ struct info_entry {
 typedef struct info_entry info_entry_t;
 
 /**
- *
+ * Estrutura que armazena as informações de uma entrada
+ * de diretório (arquivo e subdiretórios).
  */
 struct dir_entry {
 	char name[MAXNAME];
@@ -71,7 +73,7 @@ struct dir_entry {
 typedef struct dir_entry dir_entry_t;
 
 /**
- *
+ * Descritor de um diretório (contém informações e os filhos do diretório).
  */
 struct dir_descriptor {
 	dir_entry_t dir_infos;
