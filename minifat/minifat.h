@@ -18,15 +18,20 @@ extern int fd;
 #define ENDOFCHAIN 0xFFFFFFFF
 
 #define EMPTY_TYPE 0x00
-#define FILE_TYPE 0x01
-#define DIR_TYPE 0x02
 
-typedef uint8_t byte_t;
+#define COMMAND_SIZE 5
+#define COMMAND_POS 0
+#define BLOCK_POS 1
+#define READ_BLOCK 1
+#define WRITE_BLOCK 2
+
+#define UART_READ_TIMEOUT 5000
 
 typedef uint32_t fat_entry_t;
 
 /**
- *
+ * Estrutura para armazenar a data que será usada para informar
+ * data relacionada a um arquivo/diretório.
  */
 struct date_format {
 	unsigned int day:6;
@@ -39,7 +44,7 @@ struct date_format {
 typedef struct date_format date_t;
 
 /**
- *
+ * Armazena as informações do sistema de arquivo.
  */
 struct info_entry {
 	uint32_t total_block;
@@ -52,7 +57,8 @@ struct info_entry {
 typedef struct info_entry info_entry_t;
 
 /**
- *
+ * Estrutura que armazena as informações de uma entrada
+ * de diretório (arquivo e subdiretórios).
  */
 struct dir_entry {
 	char name[MAXNAME];
@@ -67,7 +73,7 @@ struct dir_entry {
 typedef struct dir_entry dir_entry_t;
 
 /**
- *
+ * Descritor de um diretório (contém informações e os filhos do diretório).
  */
 struct dir_descriptor {
 	dir_entry_t dir_infos;
@@ -75,11 +81,11 @@ struct dir_descriptor {
 } __attribute__((packed));
 typedef struct dir_descriptor dir_descriptor_t;
 
+void tm_to_date(struct tm *tm, date_t *date);
+
 int format(int size);
 
 void init(info_entry_t *info, fat_entry_t **fat_entry, dir_entry_t **root_dir);
-
-void release(fat_entry_t **fat_entry, dir_entry_t **root_dir);
 
 int create_empty_file(dir_entry_t *dir, dir_entry_t *dir_entry_list,
 					  info_entry_t *info, fat_entry_t *fat, const char *name,
@@ -116,9 +122,8 @@ int delete_dir(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *father_d
 int add_entry_in_dir_entry(dir_entry_t *dir, dir_entry_t *dir_entry_list,
 						   dir_entry_t *entry, const info_entry_t *info);
 
-int update_entry(dir_entry_t *father_dir, dir_entry_t *dir_entry_list,
-				 dir_entry_t *entry, const info_entry_t *info,
-				 char *name, uid_t uid, gid_t gid, mode_t mode);
+int update_entry(dir_entry_t *father_dir, dir_entry_t *dir_entry_list, dir_entry_t *entry, const info_entry_t *info,
+				 char *name, uid_t uid, gid_t gid, mode_t mode, date_t* update);
 
 int
 resize_file(fat_entry_t *fat, const info_entry_t *info, dir_entry_t *dir, dir_entry_t *dir_entry_list, dir_entry_t *file,
